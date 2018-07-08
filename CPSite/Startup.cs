@@ -27,6 +27,7 @@ using CPFameWork.Portal.Module;
 using CPFrameWork.Organ.Application;
 using CPFrameWork.Flow;
 using CPFrameWork.Global.Msg;
+using CPFrameWork.UIInterface.DataV;
 
 namespace CPFrameWork
 {
@@ -109,6 +110,7 @@ namespace CPFrameWork
             CPFlowTemplate.StartupInit(services, Configuration);
             CPFlowEngine.StartupInit(services, Configuration);
             CPMsgs.StartupInit(services, Configuration);
+            CPDataVEngine.StartupInit(services, Configuration);
 
         }
 

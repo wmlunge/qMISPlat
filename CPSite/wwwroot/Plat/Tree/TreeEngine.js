@@ -18,7 +18,12 @@ function CPGetContextFrame() {
 }
 function CPTreeSetFrameUrl(url)
 {
-    $("#CPTreeFrame").attr("src", CPWebRootPath + url);
+    if (url.indexOf(CPWebRootPath) == -1) {
+        $("#CPTreeFrame").attr("src", CPWebRootPath + url);
+    }
+    else {
+        $("#CPTreeFrame").attr("src",  url);
+    }
 }
 //选中第一个节点
 function CPTreeSelectFirstNode()
@@ -485,7 +490,7 @@ function CPTreeCollapseAllNode() {
     treeview.collapse(".k-item");
 }
 function CPTreeUpdateConfig(treeId) {
-    var url = "/Plat/Tab/TabView?TabCode=Tab201710181518190005&TargetTreeId=" + treeId;
+    var url = CPWebRootPath +"/Plat/Tab/TabView?TabCode=Tab201710181518190005&TargetTreeId=" + treeId;
     try {
         top.OpenNewModel(url, "修改配置", 9000, 9000);
     }

@@ -316,6 +316,17 @@ namespace CPFrameWork.UIInterface.Form
             ISpecification<CPFormUseScene> specification;
             specification = new ExpressionSpecification<CPFormUseScene>(t => t.SceneCode.Equals(sceneCode));
             IList<CPFormUseScene> col = this._CPFormUseSceneRep.GetByCondition(specification, eagerLoadingProperties);
+            if(isLoadFuncInfo)
+            {
+                col.ToList().ForEach(t => {
+                    if(t.FuncCol!= null && t.FuncCol.Count >0)
+                    {
+                        t.FuncCol.ForEach(func => {
+                            func.FormatInitValue();
+                        });
+                    }
+                });
+            }
             if (col.Count <= 0)
                 return null;
             else
@@ -750,7 +761,10 @@ namespace CPFrameWork.UIInterface.Form
                     IList<CPFormFieldRight> rCol = fieldRightCol.Where(c => c.FieldId.Equals(t.FieldId)).ToList();
                     if (rCol.Count > 0)
                         fieldRight = rCol[0];
-                    if(tmpCol[0].FieldStatus == CPFormEnum.FieldStatusEnum.Hidden)
+                    if(tmpCol[0].FieldStatus == CPFormEnum.FieldStatusEnum.Hidden
+                    ||
+                    (fieldRight != null && fieldRight.AccessType == CPFormEnum.AccessTypeEnum.Hidden)
+                    )
                     {
 
                         string controlHtml = "";
@@ -778,7 +792,14 @@ namespace CPFrameWork.UIInterface.Form
                         {
                             sbHTML.Append("<td class='tdLeft'></td><td class='tdRight'></td></tr>");
                         }
-                        sbHTML.Append("<tr><td colspan='" + oneRowColumn + "' class='trHeader'><div class='ChildTableHeaderLeft'>" + tmpCol[0].FieldTitle + "</div><div  class='ChildTableHeaderRight'><input type='button' id='btnCPFormAddChildRow_" + tmpCol[0].TableName + "'  class='btnExtendTableAdd'  ng-click=\"CPFormAddChildRow('btnCPFormAddChildRow_" + tmpCol[0].TableName + "',true)\"  data-TableName='" + tmpCol[0].TableName + "'  value='添加'/></div></td></tr>");
+                        //看下子表整体是否设置了权限
+                        string exAddBtn = "<input type='button' id='btnCPFormAddChildRow_" + tmpCol[0].TableName + "' data-ExtendBtnAddIdentification='true'  class='btnExtendTableAdd'  ng-click=\"CPFormAddChildRow('btnCPFormAddChildRow_" + tmpCol[0].TableName + "',true)\"  data-TableName='" + tmpCol[0].TableName + "'  value='添加'/>";
+                        if (fieldRight != null && fieldRight.AccessType == CPFormEnum.AccessTypeEnum.Read)
+                        {
+                            //主表整体是只读的
+                            exAddBtn = "";
+                        }
+                        sbHTML.Append("<tr><td colspan='" + oneRowColumn + "' class='trHeader'><div class='ChildTableHeaderLeft'>" + tmpCol[0].FieldTitle + "</div><div  class='ChildTableHeaderRight'>" + exAddBtn  + "</div></td></tr>");
                         sbHTML.Append("<tr   ng-repeat='item in FormObj.Data." + tmpCol[0].TableName + "' on-Repeat-Finished-Render  id=\"trCPFormExtendTable_" + tmpCol[0].TableName + "\"  ><td colspan='" + oneRowColumn + "' class='CPFormExtendTableTdCss' >");
                         sbHTML.Append("{@" + tmpCol[0].FieldName + "@}");//最后统一替换
                         sbHTML.Append("</td></tr>");
@@ -1051,7 +1072,14 @@ namespace CPFrameWork.UIInterface.Form
             b = _CPFormRep.SyncConfigFromDataSet(targetSysId, ds, false);
             return b;
         }
-        #endregion   
+        #endregion
+
+        #region 保存表单权限
+        public bool SaveFormFieldRightForAllUser(int formId,int groupId,List<int> FieldIdCol, CPFormEnum.AccessTypeEnum accessType)
+        {
+            return this._CPFormRep.SaveFormFieldRightForAllUser(formId, groupId, FieldIdCol, accessType);
+        }
+        #endregion 
     }
 }
 

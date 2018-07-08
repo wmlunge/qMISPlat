@@ -562,6 +562,8 @@ namespace CPFrameWork.UIInterface.Form
         /// </summary>
         public string FormLoadHandler { get; set; }
 
+        public string FormLoadExJSMethod { get; set; }
+
         /// <summary>
         /// 表单保存前，客户端扩展方法
         /// </summary>

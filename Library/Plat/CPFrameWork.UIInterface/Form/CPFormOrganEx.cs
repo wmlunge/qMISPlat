@@ -48,7 +48,10 @@ namespace CPFrameWork.UIInterface.Form
             List<string> col = RoleUserIds.Split(',').ToList();
             List<CORoleUserRelate> relateCol = new List<CORoleUserRelate>();
             col.ForEach(t => {
-                relateCol.Add(new CORoleUserRelate() { RoleId = int.Parse(RoleId),UserId= int.Parse(t) });
+                if (string.IsNullOrEmpty(t) == false)
+                {
+                    relateCol.Add(new CORoleUserRelate() { RoleId = int.Parse(RoleId), UserId = int.Parse(t) });
+                }
             });
             COOrgans.Instance().InitRoleUsers(int.Parse(RoleId), relateCol);
         }

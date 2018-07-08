@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26730.10
+VisualStudioVersion = 15.0.27130.2010
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NVelocity", "Library\Common\NVelocity\NVelocity.csproj", "{EDD619C4-AA6D-458D-9408-58E55041EFD7}"
 EndProject
@@ -27,7 +27,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "二次开发示例代码", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CPSDKExample", "SDKTest\CPSDKExample\CPSDKExample.csproj", "{4E3A42CB-C2A4-4214-99AF-AE7701636521}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CPFrameWork.Flow", "Library\Plat\CPFrameWork.Flow\CPFrameWork.Flow.csproj", "{A2C46538-E3B9-4BE8-9652-432439D392AE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CPFrameWork.Flow", "Library\Plat\CPFrameWork.Flow\CPFrameWork.Flow.csproj", "{A2C46538-E3B9-4BE8-9652-432439D392AE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

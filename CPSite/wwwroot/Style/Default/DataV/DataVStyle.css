@@ -1,0 +1,16 @@
+﻿/* 一行一列式布局DIV*/
+.OneRowOneCellDivContainer
+{
+    margin-top:10px;
+    border:0px solid red;
+}
+/* 一行二列式布局DIV*/
+.OneRowTwoCellDivContainer {
+    margin-top: 10px;
+    border: 0px solid red;
+}
+#divDataVContainer {
+    height: 100%;
+    width: 99%;
+    margin-top:10px;
+}

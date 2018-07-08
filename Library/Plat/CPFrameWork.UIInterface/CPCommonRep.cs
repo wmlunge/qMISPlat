@@ -1,4 +1,5 @@
 ﻿using CPFrameWork.Global;
+using CPFrameWork.UIInterface.DataV;
 using CPFrameWork.UIInterface.Form;
 using CPFrameWork.UIInterface.Grid;
 using CPFrameWork.UIInterface.Tab;
@@ -29,6 +30,7 @@ namespace CPFrameWork.UIInterface
             List<CPFormField> fieldCol, ref string pkValue, string formDataJSON, out string errorMsg);
         public abstract DataSet GetConfig(List<int> formIdCol);
         public abstract bool SyncConfigFromDataSet(int targetSysId, DataSet ds, bool isCreateNew);
+        public abstract   bool SaveFormFieldRightForAllUser(int formId, int groupId, List<int> FieldIdCol, CPFormEnum.AccessTypeEnum accessType);
     }
     internal class CPFormRep : BaseCPFormRep
     {
@@ -1395,6 +1397,41 @@ namespace CPFrameWork.UIInterface
             }
             return b;
         }
+
+
+        public override bool SaveFormFieldRightForAllUser(int formId, int groupId, List<int> FieldIdCol, CPFormEnum.AccessTypeEnum accessType)
+        {
+            if (FieldIdCol.Count <= 0)
+                return true;
+            DbHelper _helper = new DbHelper("CPCommonIns", CPAppContext.CurDbType());
+            string ids = "";
+            FieldIdCol.ForEach(t => {
+                if(string.IsNullOrEmpty(ids))
+                {
+                    ids = t.ToString();
+                }
+                else
+                {
+                    ids += "," +  t.ToString();
+
+                }
+            });
+            string strSql = "";// "DELETE FROM Form_FieldRight where formid=" + formId + " and GroupID=" + groupId;
+            strSql += "DELETE FROM Form_FieldRight WHERE FieldId in (" + ids + ") AND formid=" + formId + " and GroupID=" + groupId;
+            FieldIdCol.ForEach(t => {
+                strSql += @";INSERT INTO Form_FieldRight
+                           (GroupID
+                           , FieldId
+                           , FormId
+                           , AccessType
+                           , AccessScoreType
+                          )
+                     VALUES
+                           (" + groupId + "," + t + "," + formId + "," + (int)accessType + "," +  (int)CPFormEnum.AccessScoreTypeEnum.AllUser + ")";
+            });
+            _helper.ExecuteNonQuery(strSql);
+            return true;
+        }
     }
     internal class CPFormChildTableRep : BaseRepository<CPFormChildTable>
     {
@@ -2261,6 +2298,311 @@ namespace CPFrameWork.UIInterface
     internal class CPTreeFuncRep : BaseRepository<CPTreeFunc>
     {
         public CPTreeFuncRep(ICPCommonDbContext dbContext) : base(dbContext)
+        {
+
+        }
+    }
+    #endregion
+
+
+    #region 数据统计 部分
+    public abstract class BaseCPDataVRep : BaseRepository<CPDataV>
+    {
+        public BaseCPDataVRep(ICPCommonDbContext dbContext) : base(dbContext)
+        {
+
+        }
+        public abstract DataSet GetConfig(List<int> treeIdCol);
+        public abstract bool SyncConfigFromDataSet(int targetSysId, DataSet ds, bool isCreateNew);
+    }
+    public class CPDataVRep : BaseCPDataVRep
+    {
+        public CPDataVRep(ICPCommonDbContext dbContext) : base(dbContext)
+        {
+
+        }
+        public override bool SyncConfigFromDataSet(int targetSysId, DataSet ds, bool isCreateNew)
+        {
+            DbHelper _helper = new DbHelper("CPCommonIns", CPAppContext.CurDbType());
+
+            bool b = true;
+            #region 先删除数据           
+            if (isCreateNew == false)
+            {
+                string delDataVCodes = "";
+                foreach (DataRow drMain in ds.Tables["DataV_Main"].Rows)
+                {
+                    if (string.IsNullOrEmpty(delDataVCodes)) delDataVCodes = drMain["DataVCode"].ToString();
+                    else delDataVCodes += "," + drMain["DataVCode"].ToString();
+                }
+                if (string.IsNullOrEmpty(delDataVCodes) == false)
+                {
+                    string delSql = @"DELETE FROM DataV_Layout WHERE DataVId IN (SELECT DataVId FROM DataV_Main WHERE DataVCode IN ('" + delDataVCodes.Replace(",", "','") + @"'))
+                        ;DELETE FROM DataV_Search WHERE DataVId IN (SELECT DataVId FROM DataV_Main WHERE DataVCode IN ('" + delDataVCodes.Replace(",", "','") + @"'))
+                        ;DELETE FROM DataV_ChartSeries WHERE DataVId IN (SELECT DataVId FROM DataV_Main WHERE DataVCode IN ('" + delDataVCodes.Replace(",", "','") + @"'))
+                        ;DELETE FROM DataV_Statistics WHERE DataVId IN (SELECT DataVId FROM DataV_Main WHERE DataVCode IN ('" + delDataVCodes.Replace(",", "','") + @"'))
+                        ;DELETE FROM DataV_Main WHERE     DataVCode IN ('" + delDataVCodes.Replace(",", "','") + @"')";
+                    _helper.ExecuteNonQuery(delSql);
+                    if (!b)
+                        throw new Exception("先删除已经存在的配置时出错");
+                }
+            }
+            #endregion
+
+            #region 写入数据
+            SqlCommand cmd = new SqlCommand(@"SELECT * FROM DataV_Main WHERE 1=2
+                    ;SELECT * FROM DataV_Statistics WHERE 1=2
+                    ;SELECT * FROM DataV_ChartSeries WHERE 1=2
+                    ;SELECT * FROM DataV_Search WHERE 1=2
+                    ;SELECT * FROM DataV_Layout WHERE 1=2",
+                _helper.GetConnection() as SqlConnection);
+            SqlDataAdapter da = new System.Data.SqlClient.SqlDataAdapter(cmd);
+            // SqlCommandBuilder builder = new SqlCommandBuilder(da);
+            //AddWithKey: 自动填充数据表结构,如：主键和限制
+            //预设值Add,不填充结构
+            da.MissingSchemaAction = MissingSchemaAction.AddWithKey;//Default Value is: Add
+            DataSet dsStruct = new DataSet();
+            da.Fill(dsStruct);
+            dsStruct.Tables[0].TableName = "DataV_Main";
+            dsStruct.Tables[1].TableName = "DataV_Statistics";
+            dsStruct.Tables[2].TableName = "DataV_ChartSeries";
+            dsStruct.Tables[3].TableName = "DataV_Search";
+            dsStruct.Tables[4].TableName = "DataV_Layout";
+
+            #region DataV_Main
+            Dictionary<int, int> oldNewDataVId= new Dictionary<int, int>();
+            foreach (DataRow dr in ds.Tables["DataV_Main"].Rows)
+            {
+                dr["SysId"] = targetSysId;
+                if (isCreateNew)
+                {
+                    dr["DataVTitle"] = dr["DataVTitle"].ToString() + "_副本";
+                    int autoIndex;
+                    dr["DataVCode"] = CPAutoNumHelper.Instance().GetNextAutoNum("DataVCode", out autoIndex);
+                    dr["AutoIndex"] = autoIndex;
+                }
+                string insertSql = CPAppContext.GetInsertSql("DataV_Main", dsStruct.Tables["DataV_Main"].Columns, dr);
+                insertSql += ";select SCOPE_IDENTITY() as Id;";
+                SqlCommand cmdInsert = new SqlCommand(insertSql, _helper.GetConnection() as SqlConnection);
+                foreach (DataColumn dc in dsStruct.Tables["DataV_Main"].Columns)
+                {
+                    if (dc.AutoIncrement)
+                    {
+                        continue;
+                    }
+                    if (dr.Table.Columns.Contains(dc.ColumnName))
+                    {
+                        cmdInsert.Parameters.AddWithValue("@" + dc.ColumnName, dr[dc.ColumnName]);
+                    }
+                    else
+                    {
+                        cmdInsert.Parameters.AddWithValue("@" + dc.ColumnName, DBNull.Value);
+                    }
+                }
+                int newId = int.Parse(_helper.ExecuteScalar(cmdInsert).ToString());
+                oldNewDataVId.Add(int.Parse(dr["DataVId"].ToString()), newId);
+            }
+
+            #endregion
+
+            #region DataV_Statistics
+            //循环列
+            Dictionary<int, int> oldNewStatisticsId = new Dictionary<int, int>();
+            Dictionary<int, string> oldNewSourceIdAndParentId = new Dictionary<int, string>();
+            if (ds.Tables["DataV_Statistics"] != null)
+            {
+                foreach (DataRow dr in ds.Tables["DataV_Statistics"].Rows)
+                {
+                    dr["DataVId"] = oldNewDataVId[int.Parse(dr["DataVId"].ToString())];
+                    string insertSql = CPAppContext.GetInsertSql("DataV_Statistics", dsStruct.Tables["DataV_Statistics"].Columns, dr);
+                    insertSql += ";select SCOPE_IDENTITY() as Id;";
+                    SqlCommand cmdInsert = new SqlCommand(insertSql, _helper.GetConnection() as SqlConnection);
+                    foreach (DataColumn dc in dsStruct.Tables["DataV_Statistics"].Columns)
+                    {
+                        if (dc.AutoIncrement)
+                        {
+                            continue;
+                        }
+                        if (dr.Table.Columns.Contains(dc.ColumnName))
+                        {
+                            cmdInsert.Parameters.AddWithValue("@" + dc.ColumnName, dr[dc.ColumnName]);
+                        }
+                        else
+                        {
+                            cmdInsert.Parameters.AddWithValue("@" + dc.ColumnName, DBNull.Value);
+                        }
+                    }
+                    int newId = int.Parse(_helper.ExecuteScalar(cmdInsert).ToString());
+                    oldNewStatisticsId.Add(int.Parse(dr["StatisticsId"].ToString()), newId);
+                    oldNewSourceIdAndParentId.Add(newId,  dr["ParentStatisticsId"].ToString( ));
+                }
+                string updateSql = "";
+                oldNewSourceIdAndParentId.Keys.ToList().ForEach(t => {
+                    string oldParent = oldNewSourceIdAndParentId[t].ToString();
+                    if (int.Parse(oldParent).Equals(-1) == false)
+                    {
+                        if (string.IsNullOrEmpty(updateSql))
+                        {
+                            updateSql = "UPDATE DataV_Statistics SET ParentStatisticsId=" + oldNewStatisticsId[int.Parse(oldParent)] + " WHERE StatisticsId=" + t;
+                        }
+                        else
+                        {
+                            updateSql += ";UPDATE DataV_Statistics SET ParentStatisticsId=" + oldNewStatisticsId[int.Parse(oldParent)] + " WHERE StatisticsId=" + t;
+                        }
+                    }
+                });
+                if (string.IsNullOrEmpty(updateSql) == false)
+                {
+                    _helper.ExecuteNonQuery(updateSql);
+                }
+            }
+            #endregion
+
+            #region DataV_ChartSeries
+            if (ds.Tables["DataV_ChartSeries"] != null)
+            {
+                foreach (DataRow dr in ds.Tables["DataV_ChartSeries"].Rows)
+                {
+                    dr["DataVId"] = oldNewDataVId[int.Parse(dr["DataVId"].ToString())];
+                    dr["StatisticsId"] = oldNewStatisticsId[int.Parse(dr["StatisticsId"].ToString())];
+                    string insertSql = CPAppContext.GetInsertSql("DataV_ChartSeries", dsStruct.Tables["DataV_ChartSeries"].Columns, dr);
+                    SqlCommand cmdInsert = new SqlCommand(insertSql, _helper.GetConnection() as SqlConnection);
+                    foreach (DataColumn dc in dsStruct.Tables["DataV_ChartSeries"].Columns)
+                    {
+                        if (dc.AutoIncrement)
+                        {
+                            continue;
+                        }
+                        if (dr.Table.Columns.Contains(dc.ColumnName))
+                        {
+                            cmdInsert.Parameters.AddWithValue("@" + dc.ColumnName, dr[dc.ColumnName]);
+                        }
+                        else
+                        {
+                            cmdInsert.Parameters.AddWithValue("@" + dc.ColumnName, DBNull.Value);
+                        }
+                    }
+                    _helper.ExecuteNonQuery(cmdInsert);
+                }
+            }
+            #endregion
+
+            #region DataV_Search
+            if (ds.Tables["DataV_Search"] != null)
+            {
+                foreach (DataRow dr in ds.Tables["DataV_Search"].Rows)
+                {
+                    dr["DataVId"] = oldNewDataVId[int.Parse(dr["DataVId"].ToString())];
+                    dr["StatisticsId"] = oldNewStatisticsId[int.Parse(dr["StatisticsId"].ToString())];
+                    string insertSql = CPAppContext.GetInsertSql("DataV_Search", dsStruct.Tables["DataV_Search"].Columns, dr);
+                    SqlCommand cmdInsert = new SqlCommand(insertSql, _helper.GetConnection() as SqlConnection);
+                    foreach (DataColumn dc in dsStruct.Tables["DataV_Search"].Columns)
+                    {
+                        if (dc.AutoIncrement)
+                        {
+                            continue;
+                        }
+                        if (dr.Table.Columns.Contains(dc.ColumnName))
+                        {
+                            cmdInsert.Parameters.AddWithValue("@" + dc.ColumnName, dr[dc.ColumnName]);
+                        }
+                        else
+                        {
+                            cmdInsert.Parameters.AddWithValue("@" + dc.ColumnName, DBNull.Value);
+                        }
+                    }
+                    _helper.ExecuteNonQuery(cmdInsert);
+                }
+            }
+            #endregion
+
+            #region DataV_Layout
+            if (ds.Tables["DataV_Layout"] != null)
+            {
+                foreach (DataRow dr in ds.Tables["DataV_Layout"].Rows)
+                {
+                    dr["DataVId"] = oldNewDataVId[int.Parse(dr["DataVId"].ToString())];
+                    string layoutHTML = Convert.IsDBNull(dr["LayoutHTML"]) ? "" : dr["LayoutHTML"].ToString();
+                    if(string.IsNullOrEmpty(layoutHTML)==false)
+                    {
+                        oldNewStatisticsId.Keys.ToList().ForEach(t => {
+                            layoutHTML = layoutHTML.Replace("divStatistics_" + t, "divStatistics_" + oldNewStatisticsId[t]);
+                        });
+                        dr["LayoutHTML"] = layoutHTML;
+                    }
+                    string insertSql = CPAppContext.GetInsertSql("DataV_Layout", dsStruct.Tables["DataV_Layout"].Columns, dr);
+                    SqlCommand cmdInsert = new SqlCommand(insertSql, _helper.GetConnection() as SqlConnection);
+                    foreach (DataColumn dc in dsStruct.Tables["DataV_Layout"].Columns)
+                    {
+                        if (dc.AutoIncrement)
+                        {
+                            continue;
+                        }
+                        if (dr.Table.Columns.Contains(dc.ColumnName))
+                        {
+                            cmdInsert.Parameters.AddWithValue("@" + dc.ColumnName, dr[dc.ColumnName]);
+                        }
+                        else
+                        {
+                            cmdInsert.Parameters.AddWithValue("@" + dc.ColumnName, DBNull.Value);
+                        }
+                    }
+                    _helper.ExecuteNonQuery(cmdInsert);
+                }
+            }
+            #endregion
+
+            #endregion
+            return b;
+        }
+        public override DataSet GetConfig(List<int> dataVIdCol)
+        {
+            string ids = "";
+            dataVIdCol.ForEach(t => {
+                if (string.IsNullOrEmpty(ids))
+                    ids = t.ToString();
+                else
+                    ids += "," + t.ToString();
+            });
+            DbHelper _helper = new DbHelper("CPCommonIns", CPAppContext.CurDbType());
+            string strSql = "SELECT * FROM DataV_Main WHERE DataVId in(" + ids + ");";
+            strSql += "SELECT * FROM DataV_Statistics WHERE DataVId in(" + ids + ");";
+            strSql += "SELECT * FROM DataV_ChartSeries WHERE DataVId in(" + ids + ");";
+            strSql += "SELECT * FROM DataV_Search WHERE DataVId in(" + ids + ");";
+            strSql += "SELECT * FROM DataV_Layout WHERE DataVId in(" + ids + ")";
+            DataSet ds = _helper.ExecuteDataSet(strSql);
+            ds.Tables[0].TableName = "DataV_Main";
+            ds.Tables[1].TableName = "DataV_Statistics";
+            ds.Tables[2].TableName = "DataV_ChartSeries";
+            ds.Tables[3].TableName = "DataV_Search";
+            ds.Tables[4].TableName = "DataV_Layout";
+            return ds;
+        }
+    }
+    internal class CPDataVStatisticsRep : BaseRepository<CPDataVStatistics>
+    {
+        public CPDataVStatisticsRep(ICPCommonDbContext dbContext) : base(dbContext)
+        {
+
+        }
+    }
+    internal class CPDataVChartSeriesRep : BaseRepository<CPDataVChartSeries>
+    {
+        public CPDataVChartSeriesRep(ICPCommonDbContext dbContext) : base(dbContext)
+        {
+
+        }
+    }
+    internal class CPDataVChartSearchRep : BaseRepository<CPDataVChartSearch>
+    {
+        public CPDataVChartSearchRep(ICPCommonDbContext dbContext) : base(dbContext)
+        {
+
+        }
+    }
+    internal class CPDataVLayoutRep : BaseRepository<CPDataVLayout>
+    {
+        public CPDataVLayoutRep(ICPCommonDbContext dbContext) : base(dbContext)
         {
 
         }

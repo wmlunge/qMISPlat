@@ -108,6 +108,14 @@ angular.module('CPFormEngineApp', []).controller('MyCtrl', function ($scope, $sc
         $scope.CPFormInitButton();
         //  console.log(CPFormGlobal_FormObj);
         $scope.FormObj = CPFormGlobal_FormObj;
+       
+        $scope.$watch('$viewContentLoaded', function () {
+            //表单加载完成后，扩展JS方法
+            if (CPFormGlobal_FormObj.Config.UseSceneCol[0].FormLoadExJSMethod != null && CPFormGlobal_FormObj.Config.UseSceneCol[0].FormLoadExJSMethod != "") {
+                // document.write(CPFormGlobal_FormObj.Config.UseSceneCol[0].FormScript)
+                eval(CPFormGlobal_FormObj.Config.UseSceneCol[0].FormLoadExJSMethod);
+            }
+        });  
     });
 
     //加载操作按钮start
@@ -216,13 +224,16 @@ angular.module('CPFormEngineApp', []).controller('MyCtrl', function ($scope, $sc
 
     //设置表单checkbox默认选中状态start
     $scope.SetCheckBoxFieldChecked = function (fieldValue, curChkValue) {
-        if (fieldValue == null || fieldValue == "")
-            return false;
+        if (fieldValue == null || fieldValue == "" )
+            return false; 
         var sArray = fieldValue.split(',');
-        if ($.inArray(curChkValue, fieldValue) == -1)
-            return false;
-        else
-            return true;
+        var bReturn = false;
+        if ($.inArray(curChkValue, sArray) == -1)
+            bReturn = false;
+        else {
+            bReturn = true;
+        }
+        return bReturn;
     };
     //设置表单checkbox默认选中状态end
 
@@ -239,31 +250,97 @@ angular.module('CPFormEngineApp', []).controller('MyCtrl', function ($scope, $sc
 
 
     //设置表单checkbox的值start
-    $scope.SetCheckBoxFieldValue = function (isExtendTable, extendTableDataIndex, tableName, fieldName, formFieldId) {
-        //var extendTableDataIndex = 1;
-        var sArray = $("input[name='CPForm_" + formFieldId + "']");
-        var sValue = "";
-        $.each(sArray, function (nIndex, nObj) {
-            if (nObj.checked) {
-                if (sValue == "")
-                    sValue = nObj.value;
-                else
-                    sValue += "," + nObj.value;
-            }
-        });
+    $scope.SetCheckBoxFieldValue= function (isExtendTable, extendTableDataIndex, tableName, fieldName, formFieldId) { 
+        var sValue = $(event.target).val();
+        var isChecked = event.target.checked;
+        var sOldValue = "";
         if (isExtendTable == "true") {
             //拓展表
             $.each(CPFormGlobal_FormObj.Data[tableName], function (nIndex, nObj) {
                 if (Number(nObj.CPFormDataIndex) == Number(extendTableDataIndex)) {
-                    nObj[fieldName] = sValue;
-                    return;
+                    
+                     sOldValue = nObj[fieldName];
+                    if (sOldValue == true || sOldValue == false)
+                        sOldValue = "";
+                  
+                    var tmpArray = sOldValue.split(','); 
+                    if (isChecked) {
+                        var needAdd = true;
+                        for (var i = 0; i < tmpArray.length; i++) {
+                            if (tmpArray[i] == sValue) {
+                                needAdd = false;
+                            }
+                        }
+                        if (needAdd) {
+                            if (sOldValue == "")
+                                sOldValue = sValue;
+                            else
+                                sOldValue += "," +  sValue; 
+                        }
+                    }
+                    else { 
+                        sOldValue = "";
+                        for (var i = 0; i < tmpArray.length; i++) {
+                            if (tmpArray[i] != sValue) {
+                                if (sOldValue =="") {
+                                    sOldValue = tmpArray[i];
+                                }
+                                else
+                                    sOldValue += "," +  tmpArray[i];
+                            }
+                        }
+                    }
+                    
+                    nObj[fieldName] = sOldValue; 
                 }
             });
         }
         else {
-            //主表
-            CPFormGlobal_FormObj.Data[tableName][fieldName] = sValue;
+            //主表 
+             sOldValue = CPFormGlobal_FormObj.Data[tableName][fieldName];
+            if (sOldValue == true || sOldValue == false)
+                sOldValue = "";
+         
+            var tmpArray = sOldValue.split(',');
+            if (isChecked) {
+                var needAdd = true;
+                for (var i = 0; i < tmpArray.length; i++) {
+                    if (tmpArray[i] == sValue) {
+                        needAdd = false;
+                    }
+                }
+                if (needAdd) {
+                    if (sOldValue == "")
+                        sOldValue = sValue;
+                    else
+                        sOldValue += "," + sValue;
+                }
+            }
+            else {
+                sOldValue = "";
+                for (var i = 0; i < tmpArray.length; i++) {
+                    if (tmpArray[i] != sValue) {
+                        if (sOldValue == "") {
+                            sOldValue = tmpArray[i];
+                        }
+                        else
+                            sOldValue += "," + tmpArray[i];
+                    }
+                }
+            }
+            CPFormGlobal_FormObj.Data[tableName][fieldName] = sOldValue;
+           
         }
+        var sArray = $("input[name='CPForm_" + formFieldId + "']"); 
+        var sOldValue2 = "," + sOldValue + ",";
+        $.each(sArray, function (nIndex, nObj) {
+            if (sOldValue2.indexOf("," + $(nObj).val() + ",") == -1) {
+                $(nObj).prop("checked", false);
+            }
+            else {
+                $(nObj).prop("checked", true);
+            } 
+        });
     };
     //设置表单checkbox的值end
 
@@ -276,47 +353,50 @@ angular.module('CPFormEngineApp', []).controller('MyCtrl', function ($scope, $sc
             $scope.SetComboxSkinIsExecute = true;
             $(this).children(".comboxinput-wrapper").click(function (event) {
                 content = $(this).parent().children(".comboxcontent");
-                //阻止事件想下传递
-                event.stopPropagation();
-                //点击展开、收起
-                if (content.css("display") == "none") {
-                    $(".comboxcontent").each(function () {
-                        $(this).hide();
-                        $(this).css("opacity", "0");
-                        $(this).css("top", "84px");
-                        $(".comboxinput-wrapper").children("img").css("transform", "rotate(0deg)");
-                    });
-                    content.show();
-                    $(this).children("img").css("transform", "rotate(180deg)");
-                    /*设置一个延时以便出现后续的动画*/
-                    setTimeout(myAnimate1, 100);
-                    function myAnimate1() {
-                        content.css("opacity", "1");
-                        content.css("top", "34px");
-                    }
-                } else {
-                    content.css("opacity", "0");
-                    content.css("top", "84px");
-                    $(".comboxinput-wrapper").children("img").css("transform", "rotate(0deg)");
-                    setTimeout(myAnimate2, 100);
-                    function myAnimate2() {
-                        content.hide();
-                    }
-                }
-                //点击内容之外的地方收起
-                $(document).click(function () {
-                    content.css("opacity", "0");
-                    content.css("top", "84px");
-                    $(".comboxinput-wrapper").children("img").css("transform", "rotate(0deg)");
-                    setTimeout(myAnimate2, 100);
-                    function myAnimate2() {
-                        content.hide();
-                    }
-                });
-                content.click(function (event) {
-                    //阻止本身事件向下传递
+                var inputObj = $(this).children("input");
+                if ($(inputObj).attr("readonly") != "readonly") {
+                    //阻止事件想下传递
                     event.stopPropagation();
-                });
+                    //点击展开、收起
+                    if (content.css("display") == "none") {
+                        $(".comboxcontent").each(function () {
+                            $(this).hide();
+                            $(this).css("opacity", "0");
+                            $(this).css("top", "84px");
+                            $(".comboxinput-wrapper").children("img").css("transform", "rotate(0deg)");
+                        });
+                        content.show();
+                        $(this).children("img").css("transform", "rotate(180deg)");
+                        /*设置一个延时以便出现后续的动画*/
+                        setTimeout(myAnimate1, 100);
+                        function myAnimate1() {
+                            content.css("opacity", "1");
+                            content.css("top", "34px");
+                        }
+                    } else {
+                        content.css("opacity", "0");
+                        content.css("top", "84px");
+                        $(".comboxinput-wrapper").children("img").css("transform", "rotate(0deg)");
+                        setTimeout(myAnimate2, 100);
+                        function myAnimate2() {
+                            content.hide();
+                        }
+                    }
+                    //点击内容之外的地方收起
+                    $(document).click(function () {
+                        content.css("opacity", "0");
+                        content.css("top", "84px");
+                        $(".comboxinput-wrapper").children("img").css("transform", "rotate(0deg)");
+                        setTimeout(myAnimate2, 100);
+                        function myAnimate2() {
+                            content.hide();
+                        }
+                    });
+                    content.click(function (event) {
+                        //阻止本身事件向下传递
+                        event.stopPropagation();
+                    });
+                }
             });
             //列表点击事件
             $(this).children(".comboxcontent").children("li").each(function (value, element) {
@@ -652,30 +732,33 @@ angular.module('CPFormEngineApp', []).controller('MyCtrl', function ($scope, $sc
         var laydate = layui.laydate;
         $.each(nArray, function (nIndex, nObj) {
             var layerUIInnerType = $(nObj).attr("data-layerUIInnerType");
-            if (layerUIInnerType != "")
-            {
-                laydate.render({
-                    elem: '#' + $(nObj).attr("id")
-                    , type: layerUIInnerType
-                    , done: function (value, date, endDate) {
-                        //console.log(value); //得到日期生成的值，如：2017-08-18
-                        //console.log(date); //得到日期时间对象：{year: 2017, month: 8, date: 18, hours: 0, minutes: 0, seconds: 0}
-                        //console.log(endDate); //得结束的日期时间对象，开启范围选择（range: true）才会返回。对象成员同上。
-                        $scope.SetFieldValue($(nObj).attr("data-tablename"), $(nObj).attr("data-fieldname"), $(nObj).attr("data-datatablerowindex"), value);
-                    }
-                });
-            }
-            else {
-                laydate.render({
-                    elem: '#' + $(nObj).attr("id")
-                    , format: $(nObj).attr("data-timeFormat") //可任意组合
-                    , done: function (value, date, endDate) {
-                        //console.log(value); //得到日期生成的值，如：2017-08-18
-                        //console.log(date); //得到日期时间对象：{year: 2017, month: 8, date: 18, hours: 0, minutes: 0, seconds: 0}
-                        //console.log(endDate); //得结束的日期时间对象，开启范围选择（range: true）才会返回。对象成员同上。
-                        $scope.SetFieldValue($(nObj).attr("data-tablename"), $(nObj).attr("data-fieldname"), $(nObj).attr("data-datatablerowindex"), value);
-                    }
-                });
+            if ($(nObj).attr("readonly") != "readonly") {
+
+
+                if (layerUIInnerType != "") {
+                    laydate.render({
+                        elem: '#' + $(nObj).attr("id")
+                        , type: layerUIInnerType
+                        , done: function (value, date, endDate) {
+                            //console.log(value); //得到日期生成的值，如：2017-08-18
+                            //console.log(date); //得到日期时间对象：{year: 2017, month: 8, date: 18, hours: 0, minutes: 0, seconds: 0}
+                            //console.log(endDate); //得结束的日期时间对象，开启范围选择（range: true）才会返回。对象成员同上。
+                            $scope.SetFieldValue($(nObj).attr("data-tablename"), $(nObj).attr("data-fieldname"), $(nObj).attr("data-datatablerowindex"), value);
+                        }
+                    });
+                }
+                else {
+                    laydate.render({
+                        elem: '#' + $(nObj).attr("id")
+                        , format: $(nObj).attr("data-timeFormat") //可任意组合
+                        , done: function (value, date, endDate) {
+                            //console.log(value); //得到日期生成的值，如：2017-08-18
+                            //console.log(date); //得到日期时间对象：{year: 2017, month: 8, date: 18, hours: 0, minutes: 0, seconds: 0}
+                            //console.log(endDate); //得结束的日期时间对象，开启范围选择（range: true）才会返回。对象成员同上。
+                            $scope.SetFieldValue($(nObj).attr("data-tablename"), $(nObj).attr("data-fieldname"), $(nObj).attr("data-datatablerowindex"), value);
+                        }
+                    });
+                }
             }
            
         });
@@ -686,24 +769,25 @@ angular.module('CPFormEngineApp', []).controller('MyCtrl', function ($scope, $sc
     $scope.bExtendTableContextMenuIsCreated = false; 
     $scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
         //render完成之后要执行的方法 
+        
         $scope.SetFormDivContainerHeight();
         //由于有些引用可能没有注册以下方法，所以暂时使用try来解决
         try {
             //添加右键菜单star
+
+            //元素存在时执行的代码
             if ($scope.bExtendTableContextMenuIsCreated == false) {
                 $.contextMenu({
                     selector: '.CPFormExtendTableTdCss',
                     trigger: 'right',
                     callback: function (key, options) {
-                        
+
                         var datatablerowindex = $(CPForm_ContenxtMenuClickTarget).attr("data-datatablerowindex");
                         var tableName = $(CPForm_ContenxtMenuClickTarget).attr("data-tableName");
-                        if (datatablerowindex == undefined || datatablerowindex == null)
-                        {
+                        if (datatablerowindex == undefined || datatablerowindex == null) {
                             //表示点击的td，需要重新查找控件//从table里找
                             var array = $("input[data-datatablerowindex]", $(CPForm_ContenxtMenuClickTarget).parent().parent());
-                            if(array.length>0)
-                            {
+                            if (array.length > 0) {
                                 datatablerowindex = $(array[0]).attr("data-datatablerowindex");
                                 tableName = $(array[0]).attr("data-tableName");
                             }
@@ -715,20 +799,30 @@ angular.module('CPFormEngineApp', []).controller('MyCtrl', function ($scope, $sc
                                 }
                             }
                         }
-                        if (datatablerowindex == undefined || datatablerowindex == null)
-                        {
+                        if (datatablerowindex == undefined || datatablerowindex == null) {
                             alert("未获取到datatablerowindex索引值");
                             return;
                         }
                         //console.log(datatablerowindex);
                         //查找点击区域所在的行数
-                        if(key == "delete")
-                        {
-                            $scope.CPFormDelChildRow(datatablerowindex, tableName);
+                        if (key == "delete") {
+                            if ($("#btnCPFormAddChildRow_" + tableName).length <= 0) {
+                                //元素存在时执行的代码
+                                alert("您无数据删除的权限，请联系管理员！");
+                            }
+                            else {
+                                $scope.CPFormDelChildRow(datatablerowindex, tableName);
+                            }
                         }
-                        else if(key== "add")
-                        {
-                            $scope.CPFormAddChildRow("btnCPFormAddChildRow_" + tableName,false);
+                        else if (key == "add") {
+                           
+                            if ($("#btnCPFormAddChildRow_" + tableName).length <= 0) {
+                                //元素存在时执行的代码
+                                alert("您无数据添加的权限，请联系管理员！");
+                            }
+                            else {
+                                $scope.CPFormAddChildRow("btnCPFormAddChildRow_" + tableName, false);
+                            }
                         }
                     },
                     items: {
@@ -736,9 +830,10 @@ angular.module('CPFormEngineApp', []).controller('MyCtrl', function ($scope, $sc
                         "delete": { name: "删除此行", icon: "delete" }
 
                     }
-                }); 
-                $scope.bExtendTableContextMenuIsCreated = true; 
+                });
+                $scope.bExtendTableContextMenuIsCreated = true;
             }
+
             //添加右键菜单end
         } catch (e) { ; }
         $("#divLoading").hide();
@@ -940,7 +1035,24 @@ angular.module('CPFormEngineApp', []).controller('MyCtrl', function ($scope, $sc
     };
     //上传附件end
 
-    
+    //选择角色start
+    $scope.RoleSelectMethod = function (organIsCanMultiSel) {
+        var controlId = $(event.target).attr("data-ControlId");
+        CPFormRoleSelectMethod(controlId, organIsCanMultiSel);
+    }
+    //选择角色end
+    //选择用户start
+    $scope.UserSelectMethod = function (organIsCanMultiSel) {
+        var controlId = $(event.target).attr("data-ControlId");
+        CPFormUserSelectMethod(controlId, organIsCanMultiSel);
+    }
+    //选择用户end
+    //选择部门start
+    $scope.DepSelectMethod = function (organIsCanMultiSel) {
+        var controlId = $(event.target).attr("data-ControlId");
+        CPFormDepSelectMethod(controlId, organIsCanMultiSel);
+    }
+    //选择部门end
   
     CPFormGlobal_Scope = $scope;
 })
@@ -1048,7 +1160,7 @@ layui.use('laydate', function () {
 });
 /***********layer ui end  ******/
 //选择表达式
-//nType: 0通用表达式  1列表  2表单   3树 4流程
+//nType: 0通用表达式  1列表  2表单   3树 4流程 5数据统计
 var SelectExpression_ThisObj;
 function SelectExpression_SetReturn()
 {
@@ -1205,6 +1317,34 @@ function CPFormRoleSelectMethod(controlId, organIsCanMultiSel) {
         url = "/Plat/Grid/GridView?GridCode=Grid201711041956490019";
     }
     OpenNewModel(url, "选择角色", 650, 500);
+}
+
+
+//角色选择方法,支持选择动态角色，主要用于流程里使用
+var CPFormRoleSelectMethodForAllRole_tableName;
+var CPFormRoleSelectMethodForAllRole_fieldName;
+var CPFormRoleSelectMethodForAllRole_fieldValueName;
+var CPFormRoleSelectMethodForAllRole_dataTableRowIndex;
+function CPFormRoleSelectMethodForAllRole_SetReturn() {
+    if (CPShowModalDialogReturnArgs == null)
+        return; 
+    CPFormGlobal_Scope.SetFieldValue(CPFormRoleSelectMethodForAllRole_tableName, CPFormRoleSelectMethodForAllRole_fieldName, CPFormRoleSelectMethodForAllRole_dataTableRowIndex, CPShowModalDialogReturnArgs.RoleNames);
+    CPFormGlobal_Scope.SetFieldValue(CPFormRoleSelectMethodForAllRole_tableName, CPFormRoleSelectMethodForAllRole_fieldValueName, CPFormRoleSelectMethodForAllRole_dataTableRowIndex, CPShowModalDialogReturnArgs.RoleIds);
+}
+function CPFormRoleSelectMethodForAllRole(tableName, fieldName, fieldValueName, dataTableRowIndex, organIsCanMultiSel) {
+    CPFormRoleSelectMethodForAllRole_tableName = tableName;
+    CPFormRoleSelectMethodForAllRole_fieldName = fieldName;
+    CPFormRoleSelectMethodForAllRole_fieldValueName = fieldValueName;
+    CPFormRoleSelectMethodForAllRole_dataTableRowIndex = dataTableRowIndex;
+    var CPRoleSelectPage_SelRoleIds = CPFormGlobal_Scope.GetFieldValue(tableName, fieldValueName, dataTableRowIndex);
+    var url = "";
+    if (organIsCanMultiSel == "false") {
+        url = "/Plat/Grid/GridView?GridCode=Grid201805230710410033";
+    }
+    else {
+        url = "/Plat/Grid/GridView?GridCode=Grid201805230710410033";
+    }
+    OpenNewModel(url, "选择角色", 800, 700);
 }
 function CPFormUpdateConfig(formId)
 {

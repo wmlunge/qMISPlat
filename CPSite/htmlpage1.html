@@ -1,15 +1,20 @@
-﻿<script>
-    //点击树节点执行方法
-    function FlowTreeNodeClick() {
-        var url = "/Plat/Grid/GridView?GridCode=Grid201711191911020025";
-        url += "&FlowClassId=" + CPTreeGlobal_CurSelNodeData.NodeAttrEx;
-        CPTreeSetFrameUrl(url);
-    }
-    //新增
-    function AddFlowClass() {
-        //console.log(CPTreeGlobal_CurSelNodeData);
-        var url = "/Plat/Form/FormView?FormCode=Form201711191820250029&SceneCode=Scene201711191821200031&ViewCode=View201711191821200032&DeviceType=1&InitGroupCode=Group201711191822260024";
-        OpenNewModel(url, "新增", 500, 400);
-    }
-  
-</script>
+﻿<table style="width:100%;">
+    <tbody>
+        <tr class="firstRow" >
+            <td width="55%" valign="top">
+                <div id="divStatistics_1" style="height:300px; width:100%;">
+                    统计图一
+                </div>
+            </td>
+            <td width="45%" valign="top"></td>
+        </tr>
+        <tr>
+            <td width="55%" valign="top"></td>
+            <td width="45%" valign="top">
+                <div id="divStatistics_4" style="height:300px; width:100%;">
+                    统计图二
+                </div>
+            </td>
+        </tr>
+    </tbody>
+</table>

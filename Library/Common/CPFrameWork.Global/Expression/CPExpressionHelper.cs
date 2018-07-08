@@ -76,6 +76,7 @@ namespace CPFrameWork.Global
             _vltContext.Put("CPForm", Activator.CreateInstance(Type.GetType("CPFrameWork.UIInterface.Form.CPFormExpression,CPFrameWork.UIInterface"), new object[] { _vltContext }));
             _vltContext.Put("CPTree", Activator.CreateInstance(Type.GetType("CPFrameWork.UIInterface.Tree.CPTreeExpression,CPFrameWork.UIInterface"), new object[] { _vltContext }));
             _vltContext.Put("CPFlow", Activator.CreateInstance(Type.GetType("CPFrameWork.Flow.CPFlowExpression,CPFrameWork.Flow"), new object[] { _vltContext }));
+            _vltContext.Put("CPDataV", Activator.CreateInstance(Type.GetType("CPFrameWork.UIInterface.DataV.CPDataVExpression,CPFrameWork.UIInterface"), new object[] { _vltContext }));
         }
         public void Add(string key, object obj)
         {

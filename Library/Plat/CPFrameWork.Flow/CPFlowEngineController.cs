@@ -675,7 +675,7 @@ namespace CPFrameWork.Flow
                 else
                 {
                     CPFlowInstance curIns = engine.GetInstance(curTask.InsId);
-                    nextPhaseCol.ForEach(t => { t.InitTaskDefaultRevUser(curIns,CurUserId); });
+                    nextPhaseCol.ForEach(t => { t.InitTaskDefaultRevUser(curIns, curTask, CurUserId); });
                     re.PhaseCol = nextPhaseCol;
                     return re;
                 }
@@ -1130,7 +1130,7 @@ namespace CPFrameWork.Flow
                 }
                 else
                 {
-                    fallbackPhaseCol.ForEach(t => { t.InitTaskDefaultRevUser(curIns, CurUserId); });
+                    fallbackPhaseCol.ForEach(t => { t.InitTaskDefaultRevUser(curIns, curTask, CurUserId); });
                     re.PhaseCol = fallbackPhaseCol;
                     return re;
                 }

@@ -117,7 +117,14 @@ function PreviewForm()
     if (CPFormGlobal_FormObj.Data.Form_Preview.RightGroupCode != "") {
         url += "&RightGroupCode=" + CPFormGlobal_FormObj.Data.Form_Preview.RightGroupCode;
     }
-    window.open(url);
+    var IsGetUrl = $.CPGetQuery("IsGetUrl");
+    if (IsGetUrl != null && IsGetUrl == "true") {
+        parent.window.opener.SelectPageUrl_SetReturn(url);
+        parent.window.close();
+    }
+    else {
+        window.open(url);
+    }
 }
 function SetFormView(viewId, ViewCode, ViewType) {
     if (ViewType == "3") {

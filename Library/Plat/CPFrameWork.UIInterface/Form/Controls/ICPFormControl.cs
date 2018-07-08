@@ -73,9 +73,17 @@ namespace CPFrameWork.UIInterface.Form.Controls
                 bindPre = "FormObj.Data." + field.TableName + ".";
             }
             string readonlyS = "";
+            string readonlyCss = "";
             if (field.FieldStatus == CPFormEnum.FieldStatusEnum.Read)
             {
                 readonlyS = "readonly=\"readonly\"";
+                readonlyCss = "textboxCssReadOnly";
+                pTip = "";
+            }
+            if(fieldRight != null && fieldRight.AccessType == CPFormEnum.AccessTypeEnum.Read)
+            {
+                readonlyS = "readonly=\"readonly\"";
+                readonlyCss = " textboxCssReadOnly";
                 pTip = "";
             }
             string id = "CPForm_" + field.Id.ToString();
@@ -103,7 +111,7 @@ namespace CPFrameWork.UIInterface.Form.Controls
             }
 
             string ngChange = " ng-change=\"CPFormChange(" + field.Id + ",'" + id + "','" + onChangeEx + "');\" ";
-            string sHtml = "<input type='text' id='" + id + "' " + readonlyS + ngChange + extendEvent +  " class='textboxCss' placeholder='" + pTip + "' style='width:" + field.ShowWidth + ";'  ng-model='" + bindPre + field.FieldName + "' title=\"" + sTitle + "\" value='{{" + bindPre + field.FieldName + "}}' data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "' data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "' />";
+            string sHtml = "<input type='text' id='" + id + "' " + readonlyS + ngChange + extendEvent +  " class='textboxCss " + readonlyCss + "' placeholder='" + pTip + "' style='width:" + field.ShowWidth + ";'  ng-model='" + bindPre + field.FieldName + "' title=\"" + sTitle + "\" value='{{" + bindPre + field.FieldName + "}}' data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "' data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "' />";
             sHtml += field.HtmlEx;
             if(string.IsNullOrEmpty(field.ExButtonIcon)==false)
             {
@@ -140,9 +148,17 @@ namespace CPFrameWork.UIInterface.Form.Controls
                 bindPre = "FormObj.Data." + field.TableName + ".";
             }
             string readonlyS = "";
+            string readonlyCss = "";
             if (field.FieldStatus == CPFormEnum.FieldStatusEnum.Read)
             {
                 readonlyS = "readonly=\"readonly\"";
+                readonlyCss = " textAreaCssReadOnly";
+                pTip = "";
+            }
+            if (fieldRight != null && fieldRight.AccessType == CPFormEnum.AccessTypeEnum.Read)
+            {
+                readonlyS = "readonly=\"readonly\"";
+                readonlyCss = " textAreaCssReadOnly";
                 pTip = "";
             }
             string id = "CPForm_" + field.Id.ToString();
@@ -171,7 +187,7 @@ namespace CPFrameWork.UIInterface.Form.Controls
             {
                 extendEvent +=" " + field.EventName2 + "=\"" + field.EventMethod2 + "\" ";
             }
-            string sHtml = "<textarea  id='" + id + "' " + readonlyS + ngChange + " class='textboxCss textAreaCss' rows='" + field.MultiRows + "' placeholder='" + pTip + "' style='width:" + field.ShowWidth + ";height:" + field.ShowHeight + "px;'  ng-model='" + bindPre + field.FieldName + "'  title=\"" + sTitle + "\"  data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "'  data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "'  " + extendEvent + "  ></textarea>";
+            string sHtml = "<textarea  id='" + id + "' " + readonlyS + ngChange + " class='textboxCss textAreaCss " + readonlyCss + "' rows='" + field.MultiRows + "' placeholder='" + pTip + "' style='width:" + field.ShowWidth + ";height:" + field.ShowHeight + "px;'  ng-model='" + bindPre + field.FieldName + "'  title=\"" + sTitle + "\"  data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "'  data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "'  " + extendEvent + "  ></textarea>";
             sHtml += field.HtmlEx;
             if (string.IsNullOrEmpty(field.ExButtonIcon) == false)
             {
@@ -208,6 +224,7 @@ namespace CPFrameWork.UIInterface.Form.Controls
                 bindPre = "FormObj.Data." + field.TableName + ".";
             }
             string readonlyS = "";
+            string readonlyCss = "";
             readonlyS = "readonly=\"readonly\"";
             pTip = "";
             string id = "CPForm_" + field.Id.ToString();
@@ -256,19 +273,33 @@ namespace CPFrameWork.UIInterface.Form.Controls
             string sHtml = "";
             if(field.OrganIsCanMultiSel.Value==false)
             {
-                 sHtml = "<input type='text' id='" + id + "' " + readonlyS + ngChange + extendEvent + " class='textboxCss' placeholder='" + pTip + "' style='width:" + width + ";'  ng-model='" + bindPre + field.FieldName + "' title=\"" + sTitle + "\" value='{{" + bindPre + field.FieldName + "}}' data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "' data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "' />";
+                readonlyCss = " textboxCssReadOnly";
+                sHtml = "<input type='text' id='" + id + "' " + readonlyS + ngChange + extendEvent + " class='textboxCss " + readonlyCss + "' placeholder='" + pTip + "' style='width:" + width + ";'  ng-model='" + bindPre + field.FieldName + "' title=\"" + sTitle + "\" value='{{" + bindPre + field.FieldName + "}}' data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "' data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "' />";
+               
             }
             else
             {
-                sHtml = "<textarea  id='" + id + "' " + readonlyS + ngChange + " class='textboxCss' rows='" + field.MultiRows + "' placeholder='" + pTip + "' style='width:" + width + ";height:" + field.ShowHeight + "px;'  ng-model='" + bindPre + field.FieldName + "' title=\"" + sTitle + "\"  data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "'  data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "'  " + extendEvent + " >{{" + bindPre + field.FieldName + "}}</textarea>";
+                readonlyCss = " textboxCssReadOnly";
+                sHtml = "<textarea  id='" + id + "' " + readonlyS + ngChange + " class='textboxCss " + readonlyCss + "' rows='" + field.MultiRows + "' placeholder='" + pTip + "' style='width:" + width + ";height:" + field.ShowHeight + "px;'  ng-model='" + bindPre + field.FieldName + "' title=\"" + sTitle + "\"  data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "'  data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "'  " + extendEvent + " >{{" + bindPre + field.FieldName + "}}</textarea>";
+               
             }
             sHtml += field.HtmlEx;
             //添加选择按钮
             string clickMethod1 = "";
-            clickMethod1 = "CPFormUserSelectMethod('" + id + "','" + field.OrganIsCanMultiSel.Value.ToString().ToLower()+ "')";
-            clickMethod1 = " onclick=\"" + clickMethod1 + ";\" style='cursor:pointer;'";
-            string icon1 = "<i class=\"icon iconfont icon-zhucetianjiahaoyou FormControlAfterIconCss\" title=\"点击选择\" " + clickMethod1 + "></i>";
-            sHtml += icon1;
+            clickMethod1 = "UserSelectMethod('" + field.OrganIsCanMultiSel.Value.ToString().ToLower()+ "')";
+            clickMethod1 = " ng-click=\"" + clickMethod1 + ";\" style='cursor:pointer;'";
+            string icon1 = "<i class=\"icon iconfont icon-zhucetianjiahaoyou FormControlAfterIconCss\"  data-ControlId=\"" + id + "\"   title=\"点击选择\" " + clickMethod1 + "></i>";
+            bool isEdit = false;
+            if (field.FieldStatus == CPFormEnum.FieldStatusEnum.Edit)
+                isEdit = true;
+            if (fieldRight != null && fieldRight.AccessType == CPFormEnum.AccessTypeEnum.Read)
+            {
+                isEdit = false;
+            }
+            if (isEdit)
+            {
+                sHtml += icon1;
+            }
             //添加 选择按钮
             if (string.IsNullOrEmpty(field.ExButtonIcon) == false)
             {
@@ -306,6 +337,7 @@ namespace CPFrameWork.UIInterface.Form.Controls
             }
             string readonlyS = "";
             readonlyS = "readonly=\"readonly\"";
+            string readonlyCss = "";
             pTip = "";
             string id = "CPForm_" + field.Id.ToString();
             if (isExtendTable)
@@ -353,19 +385,31 @@ namespace CPFrameWork.UIInterface.Form.Controls
             string sHtml = "";
             if (field.OrganIsCanMultiSel.Value == false)
             {
-                sHtml = "<input type='text' id='" + id + "' " + readonlyS + ngChange + extendEvent + " class='textboxCss' placeholder='" + pTip + "' style='width:" + width + ";'  ng-model='" + bindPre + field.FieldName + "' title=\"" + sTitle + "\" value='{{" + bindPre + field.FieldName + "}}' data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "' data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "' />";
+                readonlyCss = " textboxCssReadOnly";
+                sHtml = "<input type='text' id='" + id + "' " + readonlyS + ngChange + extendEvent + " class='textboxCss " + readonlyCss + "' placeholder='" + pTip + "' style='width:" + width + ";'  ng-model='" + bindPre + field.FieldName + "' title=\"" + sTitle + "\" value='{{" + bindPre + field.FieldName + "}}' data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "' data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "' />";
             }
             else
             {
-                sHtml = "<textarea  id='" + id + "' " + readonlyS + ngChange + " class='textboxCss' rows='" + field.MultiRows + "' placeholder='" + pTip + "' style='width:" + width + ";height:" + field.ShowHeight + "px;'  ng-model='" + bindPre + field.FieldName + "' title=\"" + sTitle + "\"  data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "'  data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "'  " + extendEvent + " >{{" + bindPre + field.FieldName + "}}</textarea>";
+                readonlyCss = " textAreaCssReadOnly";
+                sHtml = "<textarea  id='" + id + "' " + readonlyS + ngChange + " class='textboxCss " + readonlyCss + "' rows='" + field.MultiRows + "' placeholder='" + pTip + "' style='width:" + width + ";height:" + field.ShowHeight + "px;'  ng-model='" + bindPre + field.FieldName + "' title=\"" + sTitle + "\"  data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "'  data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "'  " + extendEvent + " >{{" + bindPre + field.FieldName + "}}</textarea>";
             }
             sHtml += field.HtmlEx;
             //添加选择按钮
             string clickMethod1 = "";
-            clickMethod1 = "CPFormDepSelectMethod('" + id + "','" + field.OrganIsCanMultiSel.Value.ToString().ToLower() + "')";
-            clickMethod1 = " onclick=\"" + clickMethod1 + ";\" style='cursor:pointer;'";
-            string icon1 = "<i class=\"icon iconfont icon-zuzhijiagoujiekou FormControlAfterIconCss\" title=\"点击选择\" " + clickMethod1 + "></i>";
-            sHtml += icon1;
+            clickMethod1 = "DepSelectMethod('" + field.OrganIsCanMultiSel.Value.ToString().ToLower() + "')";
+            clickMethod1 = " ng-click=\"" + clickMethod1 + ";\" style='cursor:pointer;'";
+            string icon1 = "<i class=\"icon iconfont icon-zuzhijiagoujiekou FormControlAfterIconCss\" data-ControlId=\"" + id + "\"    title=\"点击选择\" " + clickMethod1 + "></i>";
+            bool isEdit = false;
+            if (field.FieldStatus == CPFormEnum.FieldStatusEnum.Edit)
+                isEdit = true;
+            if (fieldRight != null && fieldRight.AccessType == CPFormEnum.AccessTypeEnum.Read)
+            {
+                isEdit = false;
+            }
+            if (isEdit)
+            {
+                sHtml += icon1;
+            }
             //添加 选择按钮
             if (string.IsNullOrEmpty(field.ExButtonIcon) == false)
             {
@@ -403,6 +447,7 @@ namespace CPFrameWork.UIInterface.Form.Controls
             }
             string readonlyS = "";
             readonlyS = "readonly=\"readonly\"";
+            string readonlyCss = "";
             pTip = "";
             string id = "CPForm_" + field.Id.ToString();
             if (isExtendTable)
@@ -450,19 +495,32 @@ namespace CPFrameWork.UIInterface.Form.Controls
             string sHtml = "";
             if (field.OrganIsCanMultiSel.Value == false)
             {
-                sHtml = "<input type='text' id='" + id + "' " + readonlyS + ngChange + extendEvent + " class='textboxCss' placeholder='" + pTip + "' style='width:" + width + ";'  ng-model='" + bindPre + field.FieldName + "' title=\"" + sTitle + "\" value='{{" + bindPre + field.FieldName + "}}' data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "' data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "' />";
+                readonlyCss = " textboxCssReadOnly";
+                sHtml = "<input type='text' id='" + id + "' " + readonlyS + ngChange + extendEvent + " class='textboxCss " + readonlyCss + "' placeholder='" + pTip + "' style='width:" + width + ";'  ng-model='" + bindPre + field.FieldName + "' title=\"" + sTitle + "\" value='{{" + bindPre + field.FieldName + "}}' data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "' data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "' />";
             }
             else
             {
-                sHtml = "<textarea  id='" + id + "' " + readonlyS + ngChange + " class='textboxCss' rows='" + field.MultiRows + "' placeholder='" + pTip + "' style='width:" + width + ";height:" + field.ShowHeight + "px;'  ng-model='" + bindPre + field.FieldName + "' title=\"" + sTitle + "\"  data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "'  data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "'  " + extendEvent + " >{{" + bindPre + field.FieldName + "}}</textarea>";
+                readonlyCss = " textAreaCssReadOnly";
+                sHtml = "<textarea  id='" + id + "' " + readonlyS + ngChange + " class='textboxCss " + readonlyCss + "' rows='" + field.MultiRows + "' placeholder='" + pTip + "' style='width:" + width + ";height:" + field.ShowHeight + "px;'  ng-model='" + bindPre + field.FieldName + "' title=\"" + sTitle + "\"  data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "'  data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "'  " + extendEvent + " >{{" + bindPre + field.FieldName + "}}</textarea>";
             }
             sHtml += field.HtmlEx;
             //添加选择按钮
             string clickMethod1 = "";
-            clickMethod1 = "CPFormRoleSelectMethod('" + id + "','" + field.OrganIsCanMultiSel.Value.ToString().ToLower() + "')";
-            clickMethod1 = " onclick=\"" + clickMethod1 + ";\" style='cursor:pointer;'";
-            string icon1 = "<i class=\"icon iconfont icon-zhucetianjiahaoyou FormControlAfterIconCss\" title=\"点击选择\" " + clickMethod1 + "></i>";
-            sHtml += icon1;
+            clickMethod1 = "RoleSelectMethod('" + field.OrganIsCanMultiSel.Value.ToString().ToLower() + "')";
+            clickMethod1 = " ng-click=\"" + clickMethod1 + ";\" style='cursor:pointer;'";
+            string icon1 = "<i class=\"icon iconfont icon-zhucetianjiahaoyou FormControlAfterIconCss\" data-ControlId=\"" + id+ "\"  title=\"点击选择\" " + clickMethod1 + "></i>";
+          
+            bool isEdit = false;
+            if (field.FieldStatus == CPFormEnum.FieldStatusEnum.Edit)
+                isEdit = true;
+            if (fieldRight != null && fieldRight.AccessType == CPFormEnum.AccessTypeEnum.Read)
+            {
+                isEdit = false;
+            }
+            if (isEdit)
+            {
+                sHtml += icon1;
+            }
             //添加 选择按钮
             if (string.IsNullOrEmpty(field.ExButtonIcon) == false)
             {
@@ -526,9 +584,17 @@ namespace CPFrameWork.UIInterface.Form.Controls
             //  <option value="{{$index}}" ng-repeat="t in staffTypes" ng-selected="number==$index">{{t}}</option>         
             //</select>
             string readonlyS = "";
+            string readonlyCss = "";
             if (field.FieldStatus == CPFormEnum.FieldStatusEnum.Read)
             {
                 readonlyS = "disabled=\"disabled\"";
+                readonlyCss = " selectCssReadOnly";
+            }
+            if (fieldRight != null && fieldRight.AccessType == CPFormEnum.AccessTypeEnum.Read)
+            {
+                readonlyS = "disabled=\"disabled\"";
+                readonlyCss = " selectCssReadOnly";
+                 
             }
             string id = "CPForm_" + field.Id.ToString();
             if (isExtendTable)
@@ -555,7 +621,7 @@ namespace CPFrameWork.UIInterface.Form.Controls
                 extendEvent += " " + field.EventName2 + "=\"" + field.EventMethod2 + "\" ";
             }
             string ListRelateTargetField = field.ListRelateTargetField;
-            string sHtml = @"<select   id='" + id.ToString() + "' " + readonlyS  + ngChange  +  extendEvent + "  class='selectCss' title=\"" + sTitle + "\"  style='width:" + field.ShowWidth + @";' 
+            string sHtml = @"<select   id='" + id.ToString() + "' " + readonlyS  + ngChange  +  extendEvent + "  class='selectCss " + readonlyCss + "' title=\"" + sTitle + "\"  style='width:" + field.ShowWidth + @";' 
                 ng-model='" + bindPre + field.FieldName + "'   data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "'  data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "' ";
             sHtml += @"<option value='' >==请选择==</option>";
             sHtml += @"<option value='{{selectItem.valueEx}}' ng-repeat='selectItem in FormObj.Data." + field.TableName + "_" + field.FieldName + " |ListRelateFilterMethod:\"" + field.TableName + "\":\"" + ListRelateTargetField + "\" track by $index'  on-Repeat-Finished-Render >{{selectItem.textEx}}</option>";     
@@ -602,6 +668,11 @@ namespace CPFrameWork.UIInterface.Form.Controls
                 readonlyS = "readonly=\"readonly\"";
                 pTip = "";
             }
+            if (fieldRight != null && fieldRight.AccessType == CPFormEnum.AccessTypeEnum.Read)
+            {
+                readonlyS = "readonly=\"readonly\"";
+                pTip = "";
+            }
             string id = "CPForm_" + field.Id.ToString();
             if (isExtendTable)
             {
@@ -630,8 +701,11 @@ namespace CPFrameWork.UIInterface.Form.Controls
             sHtml += @" <div class='comboxwrapper'>
                             <div class='comboxinput-wrapper'>";
             sHtml += "<input type='text' id='" + id.ToString() + "' " + readonlyS + ngChange + extendEvent +   " class='textboxCss' placeholder='" + pTip + "' style='width:" + field.ShowWidth + ";'  ng-model='" + bindPre + field.FieldName + "' value='{{" + bindPre + field.FieldName + "}}' title=\"" + sTitle + "\" data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "'   data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "' />";
-            sHtml += @" <img src='../../Style/CommonIcon/down.png'>
-                        </div>
+            if(string.IsNullOrEmpty(readonlyS))
+            {
+                sHtml += @" <img src='../../Style/CommonIcon/down.png'>";
+            }
+            sHtml += @" </div>
                         <ul class='comboxcontent' style='display: none'>
                             <li ng-repeat='selectItem in FormObj.Data." + field.TableName + "_" + field.FieldName + @" track by $index'>{{selectItem.textEx}}</li>
                         </ul>
@@ -673,6 +747,10 @@ namespace CPFrameWork.UIInterface.Form.Controls
             //</select>
             string readonlyS = "";
             if (field.FieldStatus == CPFormEnum.FieldStatusEnum.Read)
+            {
+                readonlyS = "disabled=\"disabled\"";
+            }
+            if (fieldRight != null && fieldRight.AccessType == CPFormEnum.AccessTypeEnum.Read)
             {
                 readonlyS = "disabled=\"disabled\"";
             }
@@ -731,6 +809,10 @@ namespace CPFrameWork.UIInterface.Form.Controls
             {
                 readonlyS = "disabled=\"disabled\"";
             }
+            if (fieldRight != null && fieldRight.AccessType == CPFormEnum.AccessTypeEnum.Read)
+            {
+                readonlyS = "disabled=\"disabled\"";
+            }
             string name = "CPForm_" + field.Id.ToString();
             if (isExtendTable)
             {
@@ -747,7 +829,7 @@ namespace CPFrameWork.UIInterface.Form.Controls
             }
 
             string ngChange = " ng-change=\"CPFormChange(" + field.Id + ",'" + name.ToString() + "_{{$index}}','" + onChangeEx + "');\" ";
-
+          
             string sHtml = "";
             string extendEvent = "";
             if (string.IsNullOrEmpty(field.EventName1) == false && field.EventName1.Equals("onchange", StringComparison.CurrentCultureIgnoreCase) == false)
@@ -758,7 +840,15 @@ namespace CPFrameWork.UIInterface.Form.Controls
             {
                 extendEvent += " " + field.EventName2 + "=\"" + field.EventMethod2 + "\" ";
             }
-            sHtml = " <div  class=\"checkboxDivParentCss\" style='width:" + field.ShowWidth + "; ' ng-repeat='selectItem in FormObj.Data." + field.TableName + "_" + field.FieldName + " track by $index'><input type=\"checkbox\" title=\"" + sTitle + "\"  class='checkboxCss'  " + readonlyS + ngChange + extendEvent +  " ng-checked=\"SetCheckBoxFieldChecked('{{" + bindPre + field.FieldName + "}}','{{selectItem.valueEx}}')\"  ng-click=\"SetCheckBoxFieldValue('" + isExtendTable.ToString().ToLower() + "','{{" + bindPre + "CPFormDataIndex}}','" + field.TableName + "','" + field.FieldName + "'," + field.Id + ")\" value =\"{{selectItem.valueEx}}\"      name='" + name.ToString() + "'  id='" + name.ToString() + "_{{$index}}'  data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "'  data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "' /><label class='checkboxLabelCss' for=\"" + name.ToString() + "_{{$index}}\">{{selectItem.textEx}}</label></div>";
+            sHtml = " <div  class=\"checkboxDivParentCss\" style='width:" + field.ShowWidth + "; ' ng-repeat='selectItem in FormObj.Data." + field.TableName + "_" + field.FieldName + " track by $index'>" +
+                "<input type=\"checkbox\" title=\"" + sTitle + "\"  class='checkboxCss'  " + readonlyS + ngChange + extendEvent +  "" +
+                " ng-checked=\"SetCheckBoxFieldChecked('{{" + bindPre + field.FieldName + "}}','{{selectItem.valueEx}}')\" " +
+                //绑定字段临时模拟一个，解决复选框存储用,分隔的问题
+                " ng-model = '" + bindPre + field.FieldName + "_ForCheckBox'" + 
+                " ng-click=\"SetCheckBoxFieldValue('" + isExtendTable.ToString().ToLower() + "','{{" + bindPre + "CPFormDataIndex}}','" + field.TableName + "','" + field.FieldName + "'," + field.Id + ")\"" +
+                " value =\"{{selectItem.valueEx}}\"      name='" + name.ToString() + "'  id='" + name.ToString() + "_{{$index}}'  data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' " +
+                "data-tableName='" + field.TableName + "'  data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "' />" +
+                "<label class='checkboxLabelCss' for=\"" + name.ToString() + "_{{$index}}\">{{selectItem.textEx}}</label></div>";
             return sHtml;
         }
     }
@@ -784,6 +874,11 @@ namespace CPFrameWork.UIInterface.Form.Controls
             }
             string readonlyS = "";
             if (field.FieldStatus == CPFormEnum.FieldStatusEnum.Read)
+            {
+                readonlyS = "readonly=\"readonly\"";
+                pTip = "";
+            }
+            if (fieldRight != null && fieldRight.AccessType == CPFormEnum.AccessTypeEnum.Read)
             {
                 readonlyS = "readonly=\"readonly\"";
                 pTip = "";
@@ -883,6 +978,12 @@ namespace CPFrameWork.UIInterface.Form.Controls
                 readonlyS = "readonly=\"readonly\"";
                 pTip = "";
             }
+            if (fieldRight != null && fieldRight.AccessType == CPFormEnum.AccessTypeEnum.Read)
+            {
+                readonlyS = "readonly=\"readonly\"";
+                pTip = "";
+            }
+         
             string id = "CPForm_" + field.Id.ToString();
             if (isExtendTable)
             {
@@ -908,10 +1009,18 @@ namespace CPFrameWork.UIInterface.Form.Controls
             {
                 extendEvent += " " + field.EventName2 + "=\"" + field.EventMethod2 + "\" ";
             }
-            //注意 ngurl，里不直接使用{{}}绑定，必须使用如下拼接字符串的方式才可以
-            string url = "{{'" +CPAppContext.CPWebRootPath() + "/Plat/Form/Baidueditor.html?IFrameHeight="+ field.ShowHeight + "&TableName=" + field.TableName + "&FieldName=" + field.FieldName + "&CPFormDataIndex='+" + bindPre + "CPFormDataIndex}}";
-            string sHtml = "<input type='text' id='" + id + "' " + readonlyS + ngChange + extendEvent +  "  placeholder='" + pTip + "' style='display:none; width:" + field.ShowWidth + ";'  ng-model='" + bindPre + field.FieldName + "' value='{{" + bindPre + field.FieldName + "}}' data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "'   data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "' />";
-            sHtml += " <iframe   id='" + id + "_UEditor'  ng-src=" + url + "    frameborder='0' scrolling='no' width='" + field.ShowWidth + "' height='" + field.ShowHeight+ "px'    ></iframe>";
+            //注意 ngurl，里不直接使用{{}}绑定，必须使用如下拼接字符串的方式才可以 
+            string sHtml = "";
+            if (string.IsNullOrEmpty(readonlyS))
+            {
+                string url = "{{'" + CPAppContext.CPWebRootPath() + "/Plat/Form/Baidueditor.html?IFrameHeight=" + field.ShowHeight + "&TableName=" + field.TableName + "&FieldName=" + field.FieldName + "&CPFormDataIndex='+" + bindPre + "CPFormDataIndex}}";
+                sHtml = "<input type='text' id='" + id + "' " + readonlyS + ngChange + extendEvent + "  placeholder='" + pTip + "' style='display:none; width:" + field.ShowWidth + ";'  ng-model='" + bindPre + field.FieldName + "' value='{{" + bindPre + field.FieldName + "}}' data-dataTableRowIndex='{{" + bindPre + "CPFormDataIndex}}' data-tableName='" + field.TableName + "'   data-fieldName='" + field.FieldName + "' data-fieldValueName='" + field.FieldValueName + "' />";
+                sHtml += " <iframe   id='" + id + "_UEditor'  ng-src=" + url + "    frameborder='0' scrolling='no' width='" + field.ShowWidth + "' height='" + field.ShowHeight + "px'    ></iframe>";
+            }
+            else
+            {
+                sHtml += "<p  ng-bind-html=\"" + bindPre + field.FieldName + " |to_trusted\" ></p>";
+            }
             return sHtml;
         }
     }
@@ -941,6 +1050,11 @@ namespace CPFrameWork.UIInterface.Form.Controls
             }
             string readonlyS = "";
             if (field.FieldStatus == CPFormEnum.FieldStatusEnum.Read)
+            {
+                readonlyS = "readonly=\"readonly\"";
+                pTip = "";
+            }
+            if (fieldRight != null && fieldRight.AccessType == CPFormEnum.AccessTypeEnum.Read)
             {
                 readonlyS = "readonly=\"readonly\"";
                 pTip = "";

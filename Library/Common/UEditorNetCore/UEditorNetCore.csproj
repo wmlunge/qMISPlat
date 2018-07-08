@@ -5,7 +5,7 @@
     <Copyright>durow@2017</Copyright>
     <AssemblyTitle>UEditorNetCore</AssemblyTitle>
     <VersionPrefix>1.0.3</VersionPrefix>
-    <TargetFramework>netstandard1.6</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AssemblyName>UEditorNetCore</AssemblyName>
     <PackageId>UEditorNetCore</PackageId>

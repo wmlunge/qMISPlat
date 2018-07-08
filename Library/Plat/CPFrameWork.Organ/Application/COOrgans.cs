@@ -374,7 +374,7 @@ namespace CPFrameWork.Organ.Application
             Expression<Func<CORole, dynamic>>[] eagerLoadingProperties = null;
             if (isLoadUserInfo)
             {
-                eagerLoadingProperties = new Expression<Func<CORole, dynamic>>[] { t => t.UserCol };
+                eagerLoadingProperties = new Expression<Func<CORole, dynamic>>[] { t => t.RoleUserCol };
             }
             return this._CORoleRep.Get(roleId, eagerLoadingProperties);
         }

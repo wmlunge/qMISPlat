@@ -455,7 +455,7 @@ namespace CPFrameWork.Flow
             {
                 List<CPFlowInstanceTask> addedTaskCol = new List<CPFlowInstanceTask>();
                 nextPhaseCol.ForEach(nextPhase => {
-                    nextPhase.InitTaskDefaultRevUser(curIns,CurUserId);
+                    nextPhase.InitTaskDefaultRevUser(curIns, curTask,CurUserId);
                     nextPhase.TaskRevUser.ForEach(revUser => {
                         //看看这个用户在这个节点上是否有任务了
                         CPFlowInstanceTask revUserTaskTmp = this.GetInstanceTask(
@@ -649,7 +649,7 @@ namespace CPFrameWork.Flow
             {
                 List<CPFlowInstanceTask> addedTaskCol = new List<CPFlowInstanceTask>();
                 fallbackPhaseCol.ForEach(nextPhase => {
-                    nextPhase.InitTaskDefaultRevUser(curIns, CurUserId);
+                    nextPhase.InitTaskDefaultRevUser(curIns, curTask, CurUserId);
                     nextPhase.TaskRevUser.ForEach(revUser => {
                         //看看这个用户在这个节点上是否有任务了
                         CPFlowInstanceTask revUserTaskTmp = this.GetInstanceTask(
@@ -882,7 +882,7 @@ namespace CPFrameWork.Flow
                 #region 回退到首节点
                 CPFlowPhase firstPhase = CPFlowTemplate.Instance().GetFirstPhase(curFlow.PhaseCol,
                     curFlow.PhaseLinkColSubmit);
-                firstPhase.InitTaskDefaultRevUser(curIns, this.CurUserId);
+                firstPhase.InitTaskDefaultRevUser(curIns, curTask, this.CurUserId);
                 outputPhaseCol.Add(firstPhase);
                 #endregion
             }

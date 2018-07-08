@@ -28,7 +28,12 @@ var CPGridGlobal_OrderBy = "";
 function CPGridRefresh()
 {
     var grid = $("#CPGirdDiv").data("kendoGrid");
-    CPGridGlobal_CurPage = grid.pager.page();
+    if (grid.pager != undefined && grid.pager != null) {
+        CPGridGlobal_CurPage = grid.pager.page();
+    }
+    else {
+        CPGridGlobal_CurPage = 1;
+    }
     grid.destroy();
     $("#CPGirdDiv").html("");
     SetGridSearchCondition();

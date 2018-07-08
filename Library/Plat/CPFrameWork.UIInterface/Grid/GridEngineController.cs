@@ -67,7 +67,8 @@ namespace CPFrameWork.UIInterface.Grid
             try
             {
                 CPGrid Grid = CPGridEngine.Instance(CurUserId).GetGrid(GridCode, true, true);
-
+                if (string.IsNullOrEmpty(Grid.JsEx) == false)
+                    Grid.JsEx = CPExpressionHelper.Instance.RunCompile(Grid.JsEx);
                 #region 处理列表列有统计值时，计算统计值结果
                 CPGridEngine.Instance(CurUserId).StatisticsColumnSum(Grid, OtherCondition);
                 #endregion

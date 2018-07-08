@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using CPFrameWork.UIInterface.Grid;
 using CPFrameWork.UIInterface.Tab;
 using CPFrameWork.UIInterface.Tree;
+using CPFrameWork.UIInterface.DataV;
 
 namespace CPFrameWork.UIInterface
 {
@@ -63,6 +64,16 @@ namespace CPFrameWork.UIInterface
         public DbSet<CPTree> CPTreeCol { get; set; }
         public DbSet<CPTreeDataSource> CPTreeDataSourceCol { get; set; }
         public DbSet<CPTreeFunc> CPTreeFuncCol { get; set; }
+        #endregion
+
+
+
+        #region 数据统计 
+        public DbSet<CPDataV> CPDataVCol { get; set; }
+        public DbSet<CPDataVStatistics> CPDataVStatisticsCol { get; set; }
+        public DbSet<CPDataVChartSeries> CPDataVChartSeriesCol { get; set; }
+        public DbSet<CPDataVChartSearch> CPDataVChartSearchCol { get; set; }
+        public DbSet<CPDataVLayout> CPDataVLayoutCol { get; set; }
         #endregion
 
 
@@ -200,7 +211,41 @@ namespace CPFrameWork.UIInterface
 
             modelBuilder.Entity<CPTreeDataSource>().ToTable("Tree_DataSource");
             modelBuilder.Entity<CPTreeDataSource>().HasKey(t => t.Id);
-            modelBuilder.Entity<CPTreeDataSource>().Property(t => t.Id).HasColumnName("SourceId"); 
+            modelBuilder.Entity<CPTreeDataSource>().Property(t => t.Id).HasColumnName("SourceId");
+
+            #endregion
+
+
+            #region 数据统计
+            modelBuilder.Entity<CPDataV>().ToTable("DataV_Main");
+            modelBuilder.Entity<CPDataV>().HasKey(t => t.Id);
+            modelBuilder.Entity<CPDataV>().Property(t => t.Id).HasColumnName("DataVId");
+            modelBuilder.Entity<CPDataV>().HasMany(t => t.StatisticsCol).WithOne(t => t.DataV).HasForeignKey(t => t.DataVId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<CPDataV>().HasMany(t => t.LayoutCol).WithOne(t => t.DataV).HasForeignKey(t => t.DataVId).OnDelete(DeleteBehavior.Cascade);
+
+
+            modelBuilder.Entity<CPDataVStatistics>().ToTable("DataV_Statistics");
+            modelBuilder.Entity<CPDataVStatistics>().HasKey(t => t.Id);
+            modelBuilder.Entity<CPDataVStatistics>().Property(t => t.Id).HasColumnName("StatisticsId");
+            modelBuilder.Entity<CPDataVStatistics>().Property(t => t.ShowOrder).HasColumnName("DispOrder");
+            modelBuilder.Entity<CPDataVStatistics>().Ignore(t => t.XDataSourceCol);
+            modelBuilder.Entity<CPDataVStatistics>().HasMany(t => t.SeriesCol).WithOne(t => t.Statistics).HasForeignKey(t => t.StatisticsId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<CPDataVStatistics>().HasMany(t => t.SearchCol).WithOne(t => t.Statistics).HasForeignKey(t => t.StatisticsId).OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CPDataVChartSeries>().ToTable("DataV_ChartSeries");
+            modelBuilder.Entity<CPDataVChartSeries>().HasKey(t => t.Id);
+            modelBuilder.Entity<CPDataVChartSeries>().Property(t => t.Id).HasColumnName("SeriesId");
+            modelBuilder.Entity<CPDataVChartSeries>().Ignore(t => t.MainDataSourceJson);
+
+            modelBuilder.Entity<CPDataVChartSearch>().ToTable("DataV_Search");
+            modelBuilder.Entity<CPDataVChartSearch>().HasKey(t => t.Id);
+            modelBuilder.Entity<CPDataVChartSearch>().Property(t => t.Id).HasColumnName("SearchId");
+            modelBuilder.Entity<CPDataVChartSearch>().Property(t => t.ShowOrder).HasColumnName("DispOrder");
+            modelBuilder.Entity<CPDataVChartSearch>().Ignore(t => t.FieldEnumDataSourceCol);
+
+            modelBuilder.Entity<CPDataVLayout>().ToTable("DataV_Layout");
+            modelBuilder.Entity<CPDataVLayout>().HasKey(t => t.Id);
+            modelBuilder.Entity<CPDataVLayout>().Property(t => t.Id).HasColumnName("LayoutId");
 
             #endregion
             //在此设置数据库对应关系 

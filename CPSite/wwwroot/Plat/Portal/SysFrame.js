@@ -266,6 +266,8 @@ function UserPhotoClick(userId)
 
 /****************消息相关操作*********************************/
 function CPFrameInitMsg() {
+    $("#CPULTaskNotice").parent().hide();
+    return;
     var url = CPWebRootPath + "/api/CPModuleEngine/GetMsg?MsgType=2&MsgCount=50&CurUserId=" + CPCurUserId + "&CurUserIden=" + CPCurUserIden;
     $.get(url, function (data) {
         if (data.Result == false) {

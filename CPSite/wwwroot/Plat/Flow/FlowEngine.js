@@ -123,9 +123,10 @@ $(function () {
                     sHtml += "<li class=\"layui-this\">" + nFormObj.FormTitle + "</li>";
                     var url = nFormObj.FormPageUrl;
                     url += "&FormUseInCPFlow=true";
-                    if (nFormObj.FormInitGroupCode != null && nFormObj.FormInitGroupCode != "") {
-                        url += "&InitGroupCode=" + nFormObj.FormInitGroupCode;
-                    }
+                    //关掉了，直接配置到地址里了
+                    //if (nFormObj.FormInitGroupCode != null && nFormObj.FormInitGroupCode != "") {
+                    //    url += "&InitGroupCode=" + nFormObj.FormInitGroupCode;
+                    //}
                     url = CPUrlAddWebRootPath(url);
                     defaultUrl = url;
                     CPFlowGlobal_CurFormConfig = nFormObj;
@@ -155,13 +156,14 @@ $(function () {
                     $.each(CPFlowGlobal_FlowInfo.CurPhase.FormCol, function (nIndex, nFormObj) {
                         if (nIndex == dataTab.index) {
                              url = nFormObj.FormPageUrl;
-                            url += "&FormUseInCPFlow=true";
-                            if (nFormObj.FormInitGroupCode != null && nFormObj.FormInitGroupCode != "") {
-                                url += "&InitGroupCode=" + nFormObj.FormInitGroupCode;
-                            }
-                            if (nFormObj.FormRightGroupCode != null && nFormObj.FormRightGroupCode != "") {
-                                url += "&RightGroupCode=" + nFormObj.FormRightGroupCode;
-                            }
+                             url += "&FormUseInCPFlow=true";
+                            //关掉了，直接配置到地址里了
+                            //if (nFormObj.FormInitGroupCode != null && nFormObj.FormInitGroupCode != "") {
+                            //    url += "&InitGroupCode=" + nFormObj.FormInitGroupCode;
+                            //}
+                            //if (nFormObj.FormRightGroupCode != null && nFormObj.FormRightGroupCode != "") {
+                            //    url += "&RightGroupCode=" + nFormObj.FormRightGroupCode;
+                            //}
                             url = CPUrlAddWebRootPath(url);
                             CPFlowGlobal_CurFormConfig = nFormObj;
                             bExists = true;

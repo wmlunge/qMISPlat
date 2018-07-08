@@ -1,7 +1,11 @@
 ﻿using AutoMapper;
+using CPFrameWork.Global;
+using CPFrameWork.Organ.Application;
+using CPFrameWork.Organ.Domain;
 using CPFrameWork.Utility.DbOper;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 
@@ -410,7 +414,7 @@ namespace CPFrameWork.Flow.Domain
         /// <summary>
         /// 初始化用户信息
         /// </summary>
-        public void InitTaskDefaultRevUser(CPFlowInstance curIns,int CurUserId)
+        public void InitTaskDefaultRevUser(CPFlowInstance curIns, CPFlowInstanceTask curTask, int CurUserId)
         {
             if(this.TaskRevUser == null || this.TaskRevUser.Count <=0)
             {
@@ -449,33 +453,103 @@ namespace CPFrameWork.Flow.Domain
                 }
                 #endregion
                 //如果没有传入指定的用户，则取默认办理用户
-                if (bInit ==false && string.IsNullOrEmpty(this.DefaultUserIds)==false)
+                if (bInit ==false )
                 {
-                    string[] idCol = this.DefaultUserIds.Split(',');
-                    string[] nameCol = this.DefaultUserNames.Split(',');
                     List<int> addedIdCol = new List<int>();
-                    for(int i =0;i<idCol.Length;i++)
+                    if (string.IsNullOrEmpty(this.DefaultUserIds) == false)
                     {
-                        if (addedIdCol.Contains(int.Parse(idCol[i])) == false)
+                        string[] idCol = this.DefaultUserIds.Split(',');
+                        string[] nameCol = this.DefaultUserNames.Split(',');                       
+                        for (int i = 0; i < idCol.Length; i++)
                         {
-                            addedIdCol.Add(int.Parse(idCol[i]));
-                            if (this.TaskRevUser.Where(c => c.RevUserId.Equals(int.Parse(idCol[i]))).ToList().Count <= 0)
+                            if (addedIdCol.Contains(int.Parse(idCol[i])) == false)
                             {
-                                this.TaskRevUser.Add(new CPFlowPhaseTaskRevUser()
+                                addedIdCol.Add(int.Parse(idCol[i]));
+                                if (this.TaskRevUser.Where(c => c.RevUserId.Equals(int.Parse(idCol[i]))).ToList().Count <= 0)
                                 {
-                                    RevUserId = int.Parse(idCol[i]),
-                                    RevUserName = nameCol[i],
-                                    RevSourceUserId = int.Parse(idCol[i]),
-                                    RevSourceUserName = nameCol[i]
-                                });
+                                    this.TaskRevUser.Add(new CPFlowPhaseTaskRevUser()
+                                    {
+                                        RevUserId = int.Parse(idCol[i]),
+                                        RevUserName = nameCol[i],
+                                        RevSourceUserId = int.Parse(idCol[i]),
+                                        RevSourceUserName = nameCol[i]
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    //默认办理角色
+                    if (string.IsNullOrEmpty(this.DefaultRoleIds) == false)
+                    {
+                        string[] sRoleIdArray = this.DefaultRoleIds.Split(',');
+                        for (int i = 0; i < sRoleIdArray.Length; i++)
+                        {
+                            if (string.IsNullOrEmpty(sRoleIdArray[i]))
+                                continue;
+                            CORole roleTmp =  COOrgans.Instance().GetRoleById(int.Parse(sRoleIdArray[i]),true);
+                            if(roleTmp != null)
+                            {
+                                if(string.IsNullOrEmpty(roleTmp.RoleUserSql))
+                                {
+                                    //静态角色
+                                    roleTmp.UserCol.ForEach(t => {
+                                        if (addedIdCol.Contains(t.Id) == false)
+                                        {
+                                            addedIdCol.Add(t.Id);
+                                            this.TaskRevUser.Add(new CPFlowPhaseTaskRevUser()
+                                            {
+                                                RevUserId = t.Id,
+                                                RevUserName = t.UserName,
+                                                RevSourceUserId = t.Id,
+                                                RevSourceUserName = t.UserName
+                                            });
+                                        }
+                                    });
+                                }
+                                else
+                                {
+                                    //动态角色 ，SQL第一个字段返回用户姓名，第二个字段返回用户ID
+                                    string strSql = roleTmp.RoleUserSql;
+                                    try
+                                    {
+                                        DbHelper _helper = new DbHelper("CPFlowIns", CPAppContext.CurDbType());                                        
+                                        CPExpressionHelper.Instance.Add(CPFlowExpression.InsKey, curIns);
+                                        CPExpressionHelper.Instance.Add(CPFlowExpression.TaskKey, curTask);
+                                        strSql = CPExpressionHelper.Instance.RunCompile(strSql);
+                                        CPExpressionHelper.Instance.Remove(CPFlowExpression.InsKey);
+                                        CPExpressionHelper.Instance.Remove(CPFlowExpression.TaskKey);
+                                        DataTable dt = _helper.ExecuteDataTable(strSql);
+                                       foreach(DataRow dr in dt.Rows)
+                                        {
+                                            string userName = Convert.IsDBNull(dr[0]) ? "" :dr[0].ToString();
+                                            string userId = Convert.IsDBNull(dr[1]) ? "" : dr[1].ToString();
+                                            if(string.IsNullOrEmpty(userId)==false)
+                                            {
+                                                if (addedIdCol.Contains(int.Parse(userId)) == false)
+                                                {
+                                                    addedIdCol.Add(int.Parse(userId));
+                                                    this.TaskRevUser.Add(new CPFlowPhaseTaskRevUser()
+                                                    {
+                                                        RevUserId = int.Parse(userId),
+                                                        RevUserName = userName,
+                                                        RevSourceUserId = int.Parse(userId),
+                                                        RevSourceUserName = userName
+                                                    });
+                                                }
+                                            }
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        throw new Exception("根据动态角色获取对应的用户时出错，动态SQL为：" + strSql + ",错误信息如下：" + ex.ToString());
+                                    }
+                                  
+                                }
                             }
                         }
                     }
                 }
-                if (bInit == false && string.IsNullOrEmpty(this.DefaultRoleIds) == false)
-                {
-                    throw new Exception("未开发完");
-                }
+               
             }
         }
         #endregion

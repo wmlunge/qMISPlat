@@ -78,7 +78,7 @@ namespace CPFrameWork.Plat.Common
         public ActionResult SelectExp()
         {
             base.SetGlobalViewBag();
-            //nType: 0通用表达式  1列表  2表单   3树 4流程
+            //nType: 0通用表达式  1列表  2表单   3树 4流程 5 数据统计
             int ToolType = CPAppContext.QueryString<int>("Type");
             List<SelectExpClass> cCol = new List<SelectExpClass>();
             for (int i = 0; i < CPExpressionHelper.Instance._vltContext.Keys.Length; i++)
@@ -97,6 +97,7 @@ namespace CPFrameWork.Plat.Common
                             || ((CPNameAttribute)attribute).ToolType.Equals(2)
                             || ((CPNameAttribute)attribute).ToolType.Equals(3)
                             || ((CPNameAttribute)attribute).ToolType.Equals(4)
+                            || ((CPNameAttribute)attribute).ToolType.Equals(5)
                             )
                             continue;
                     }
@@ -107,6 +108,8 @@ namespace CPFrameWork.Plat.Common
                             ((CPNameAttribute)attribute).ToolType.Equals(3)
                                ||
                             ((CPNameAttribute)attribute).ToolType.Equals(4)
+                              ||
+                            ((CPNameAttribute)attribute).ToolType.Equals(5)
                             )
                             continue;
                     }
@@ -117,6 +120,8 @@ namespace CPFrameWork.Plat.Common
                             ((CPNameAttribute)attribute).ToolType.Equals(3)
                              ||
                             ((CPNameAttribute)attribute).ToolType.Equals(4)
+                             ||
+                            ((CPNameAttribute)attribute).ToolType.Equals(5)
                             )
                             continue;
                     }
@@ -127,6 +132,8 @@ namespace CPFrameWork.Plat.Common
                             ((CPNameAttribute)attribute).ToolType.Equals(2)
                              ||
                             ((CPNameAttribute)attribute).ToolType.Equals(4)
+                            ||
+                            ((CPNameAttribute)attribute).ToolType.Equals(5)
                             )
                             continue;
                     }
@@ -137,6 +144,20 @@ namespace CPFrameWork.Plat.Common
                             ((CPNameAttribute)attribute).ToolType.Equals(2)
                              ||
                             ((CPNameAttribute)attribute).ToolType.Equals(3)
+                             ||
+                            ((CPNameAttribute)attribute).ToolType.Equals(5)
+                            )
+                            continue;
+                    }
+                    else if (ToolType.Equals(5))
+                    {
+                        if (((CPNameAttribute)attribute).ToolType.Equals(1)
+                            ||
+                            ((CPNameAttribute)attribute).ToolType.Equals(2)
+                             ||
+                            ((CPNameAttribute)attribute).ToolType.Equals(3)
+                             ||
+                            ((CPNameAttribute)attribute).ToolType.Equals(4)
                             )
                             continue;
                     }

@@ -82,24 +82,46 @@ namespace CPFrameWork.UIInterface.Form
                 re.Form.UseSceneCol.ForEach(t =>
                 {
                     t.FormSavedInfo = CPExpressionHelper.Instance.RunCompile(t.FormSavedInfo);
-                  
+                    string curUserRoleId = CPExpressionHelper.Instance.RunCompile("${CPUser.UserRoleIds()}");
+                    string[] curUserRoleIdArray = curUserRoleId.Split(',');
                     //处理按钮是否显示
                     List<CPFormUseSceneFunc> funcCol = new List<CPFormUseSceneFunc>();
                     t.FuncCol.ForEach(func => {
-                        if(func.FuncIsShowInView == CPFormEnum.FuncIsShowInViewEnum.ShowAll)
+                        if (func.IsControlByRight == false)
                         {
-                            funcCol.Add(func);
-                        }
-                        else if(func.FuncIsShowInView == CPFormEnum.FuncIsShowInViewEnum.OnlyWriteShow)
-                        {
-                            if (IsView == false)
-                                funcCol.Add(func);
-                        }
-                        else if(func.FuncIsShowInView == CPFormEnum.FuncIsShowInViewEnum.OnlyReadShow)
-                        {
-                            if (IsView == true)
+                            if (func.FuncIsShowInView == CPFormEnum.FuncIsShowInViewEnum.ShowAll)
                             {
                                 funcCol.Add(func);
+                            }
+                            else if (func.FuncIsShowInView == CPFormEnum.FuncIsShowInViewEnum.OnlyWriteShow)
+                            {
+                                if (IsView == false)
+                                    funcCol.Add(func);
+                            }
+                            else if (func.FuncIsShowInView == CPFormEnum.FuncIsShowInViewEnum.OnlyReadShow)
+                            {
+                                if (IsView == true)
+                                {
+                                    funcCol.Add(func);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if(string.IsNullOrEmpty(func.RoleIds)==false)
+                            {
+                                string[] sArray = func.RoleIds.Split(',');
+                                for(int i =0;i<sArray.Length;i++)
+                                {
+                                    if(string.IsNullOrEmpty(sArray[i])==false)
+                                    {
+                                        if(curUserRoleIdArray.Contains(sArray[i]))
+                                        {
+                                            funcCol.Add(func);
+                                            break;
+                                        }
+                                    }
+                                }
                             }
                         }
                     });
@@ -615,6 +637,49 @@ namespace CPFrameWork.UIInterface.Form
                 return re;
             }
             catch (Exception ex)
+            {
+                re.Result = false;
+                re.ErrorMsg = ex.Message.ToString();
+                return re;
+            }
+        }
+        #endregion
+
+        #region 保存表单权限
+        public class SaveFormFieldRightInput
+        {
+            public int CurUserId { get; set; }
+            public string CurUserIden { get; set; }
+            public int FormId { get; set; }
+            public int GroupId { get; set; }
+            public string  FieldIds { get; set; }
+
+            public CPFormEnum.AccessTypeEnum AccessType { get; set; }
+        }
+        [HttpPost]
+        public CPWebApiBaseReturnEntity SaveFormFieldRight([FromBody] SaveFormFieldRightInput para)
+        {
+            base.SetHeader();
+            para.CurUserIden = CPAppContext.FormatSqlPara(para.CurUserIden);
+            CPWebApiBaseReturnEntity re = new CPWebApiBaseReturnEntity();
+            if (this.CheckUserIden(para.CurUserId, para.CurUserIden) == false)
+            {
+                re.Result = false;
+                re.ErrorMsg = "系统检测到非法获取数据，请传入正确的用户会话Key与用户Id参数！";
+                return re;
+            }
+            try
+            {
+                List<int> idCol = new List<int>();
+                string[] idsArray = para.FieldIds.Split('@');
+                for(int i =0;i<idsArray.Length;i++)
+                {
+                    idCol.Add(int.Parse(idsArray[i]));
+                }
+                re.Result = CPFormTemplate.Instance(para.CurUserId).SaveFormFieldRightForAllUser(para.FormId, para.GroupId, idCol, para.AccessType);
+                return re;
+            }
+            catch(Exception ex)
             {
                 re.Result = false;
                 re.ErrorMsg = ex.Message.ToString();
