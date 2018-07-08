@@ -14,6 +14,8 @@ qMISPlat(业务配置开发平台)是一套基于.net core 2.0、跨平台的，
 
 源码下载：https://gitee.com/qMISPlat/NetCore
 
+博客：http://www.cnblogs.com/wwr1982/
+
 技术交流QQ群：311562286
 
 部署手册：http://www.qmisplat.com/Support.html
