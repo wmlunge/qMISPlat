@@ -648,27 +648,44 @@ namespace CPFrameWork.UIInterface.Grid
             {
                 CPGrid grid = CPGridEngine.Instance(input.CurUserId).GetGrid(input.GridCode, false, false);
                 DbHelper dbHelper = new DbHelper(grid.DbIns, CPAppContext.CurDbType());
+                //获取列表的数据源对应表的字段信息  ，这样更新的时候拼接对应类型的sql ，比如 SByte 类型就是存不进 "true"
+                string selectSql = " select * from " + grid.MainTableName + " where 1=2";
+                DataTable dt = dbHelper.ExecuteDataTable(selectSql);
                 StringBuilder sb = new StringBuilder();
                 string[] pkArray = grid.PKFieldName.Split(',');
+
+
                 input.Items.ForEach(t =>
                 {
                     string strSql = "";
+                    if (t.FieldNamCol.Count == 0)
+                    {
+                        return;
+                    }
+
                     strSql = "UPDATE " + grid.MainTableName + " SET ";
                     for (int i = 0; i < t.FieldNamCol.Count; i++)
                     {
                         string sValue = t.FieldValueCol[i];
                         if (string.IsNullOrEmpty(sValue) == false)
+
                             sValue = sValue.Replace("'", "''");
                         else
                             sValue = "";
-                        if (i == 0)
+                        if (i != 0)
                         {
-                            strSql += t.FieldNamCol[i] + "='" + sValue + "'";
+                            strSql += ",";
+                        }
+                        if (dt.Columns[t.FieldNamCol[i]].DataType == Type.GetType("System.SByte"))
+                        {
+                            strSql += t.FieldNamCol[i] + "=" + sValue + "";
                         }
                         else
                         {
-                            strSql += "," + t.FieldNamCol[i] + "='" + sValue + "'";
+                            strSql += t.FieldNamCol[i] + "='" + sValue + "'";
                         }
+
+
                     }
                     string[] dataPKArray = t.DataPK.Split(',');
                     for (int i = 0; i < pkArray.Length; i++)
