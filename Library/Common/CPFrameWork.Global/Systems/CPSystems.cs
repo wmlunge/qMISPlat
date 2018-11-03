@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,9 +39,27 @@ namespace CPFrameWork.Global.Systems
         /// <returns></returns>
         public static void StartupInit(IServiceCollection services, IConfigurationRoot Configuration)
         {
-            // Add framework services.
-            services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
-                options.UseSqlServer(Configuration.GetConnectionString("CPCommonIns")));
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(new EFLoggerProvider());
+            switch (CPAppContext.CurDbType())
+            {
+                case DbHelper.DbTypeEnum.SqlServer:
+                    services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
+                       options.UseSqlServer(Configuration.GetConnectionString("CPCommonIns")).UseLoggerFactory(loggerFactory));
+                    break;
+                case DbHelper.DbTypeEnum.MySql:
+                    services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
+                       options.UseMySql(Configuration.GetConnectionString("CPCommonIns")).UseLoggerFactory(loggerFactory));
+                    break;
+                //case DbHelper.DbTypeEnum.Oracle:
+                //    services.AddDbContext<CPFrameDbContext>(options =>//手工高亮
+                //       options.UseSqlServer(Configuration.GetConnectionString("CPFrameIns")).UseLoggerFactory(loggerFactory));
+                //    break;
+                default:
+                    services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
+                      options.UseSqlServer(Configuration.GetConnectionString("CPCommonIns")).UseLoggerFactory(loggerFactory));
+                    break;
+            }
             services.TryAddTransient<ICPCommonDbContext, CPCommonDbContext>();
             services.TryAddTransient<IRepository<CPSystem>, CPSystemRep>();
             services.TryAddTransient<CPSystemHelper, CPSystemHelper>();

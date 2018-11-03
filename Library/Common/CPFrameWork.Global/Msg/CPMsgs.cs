@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,8 +17,29 @@ namespace CPFrameWork.Global.Msg
         #region 实例 
         public static void StartupInit(IServiceCollection services, IConfigurationRoot Configuration)
         {
-            services.AddDbContext<CPFrameDbContext>(options =>//手工高亮
-               options.UseSqlServer(Configuration.GetConnectionString("CPFrameIns")));
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(new EFLoggerProvider());
+            //services.AddDbContext<CPFrameDbContext>(options =>//手工高亮
+            //   options.UseSqlServer(Configuration.GetConnectionString("CPFrameIns")));
+            switch (CPAppContext.CurDbType())
+            {
+                case DbHelper.DbTypeEnum.SqlServer:
+                    services.AddDbContext<CPFrameDbContext>(options =>//手工高亮
+                       options.UseSqlServer(Configuration.GetConnectionString("CPFrameIns")).UseLoggerFactory(loggerFactory));
+                    break;
+                case DbHelper.DbTypeEnum.MySql:
+                    services.AddDbContext<CPFrameDbContext>(options =>//手工高亮
+                       options.UseMySql(Configuration.GetConnectionString("CPFrameIns")).UseLoggerFactory(loggerFactory));
+                    break;
+                //case DbHelper.DbTypeEnum.Oracle:
+                //    services.AddDbContext<CPFrameDbContext>(options =>//手工高亮
+                //       options.UseSqlServer(Configuration.GetConnectionString("CPFrameIns")).UseLoggerFactory(loggerFactory));
+                //    break;
+                default:
+                    services.AddDbContext<CPFrameDbContext>(options =>//手工高亮
+                      options.UseSqlServer(Configuration.GetConnectionString("CPFrameIns")).UseLoggerFactory(loggerFactory));
+                    break;
+            }
             services.TryAddTransient<ICPFrameDbContext, CPFrameDbContext>();
             services.TryAddTransient<BaseRepository<CPMsgEntity>, CPMsgRep>();
             services.TryAddTransient<CPMsgs, CPMsgs>();

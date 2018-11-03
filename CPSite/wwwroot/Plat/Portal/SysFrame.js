@@ -9,10 +9,18 @@ layui.use('element', function () {
 function CPGetContextFrame() {
     return document.getElementById("CPFrameMenu").contentWindow;
 }
+//刷新当前框架页 add by zzh 20180929
+function CPRefresh() {
+    var target = $('#CPModuleIFrame_' + Global_CPFrameCurModuleId);
+    var url = target.attr('src');
+    target.attr('src', url).load(function () {
+    });
+}
 //设定左侧菜单滚动条
 function CPFrameSetModuleScroll()
 {
-    $(".gdt").mCustomScrollbar({
+    $(".all-nav").height($(".leaf-nav").height() - $(".home").height());
+    $(".all-nav").mCustomScrollbar({
         theme: "minimal-dark"
     })
     $('.all-nav .item').hover(function () {
@@ -156,8 +164,7 @@ $(function () {
         url += "&" + sResultArray[mm];
     }
     $.getJSON(url, function (data) {
-        if (data.Result == false)
-        {
+        if (data.Result == false) {
             alert(data.ErrorMsg);
             return false;
         }
@@ -166,9 +173,8 @@ $(function () {
             var icon = "icon-businesscard_fill";
             if (nObj.Icon != null && nObj.Icon != "")
                 icon = nObj.Icon;
-            var onclickS = ""; 
-            if (nObj.ChildModule == null || nObj.ChildModule.length <= 0)
-            {
+            var onclickS = "";
+            if (nObj.ChildModule == null || nObj.ChildModule.length <= 0) {
                 onclickS = " onclick=\"CPFrameAddTab('" + nObj.ModuleName + "','" + nObj.ModuleUrl + "','" + nObj.Id + "'," + nObj.OpenType + "); \" ";
             }
             sHTML += " <div class=\"item\" style=\"cursor:pointer;\" " + onclickS + "  id=\"CPModule_" + nObj.Id + "\" data-childIsLoad=\"false\" data-moduleid=\"" + nObj.Id + "\" data-modulename=\"" + nObj.ModuleName + "\" data-icon=\"" + icon + "\">";
@@ -181,8 +187,7 @@ $(function () {
             sHTML += "        </a>";
             sHTML += "    </div>";
             sHTML += "</div>";
-            if (nIndex == 0)
-            {
+            if (nIndex == 0) {
                 Global_CPFrameCurModuleId = nObj.Id;
                 CPFrameAddTab(nObj.ModuleName, nObj.ModuleUrl, nObj.Id, nObj.OpenType);
             }
@@ -193,27 +198,41 @@ $(function () {
             var element = layui.element;
             //一些事件监听
             element.on('tab(CPFrameModuleTab)', function (dataTab) {
-               
+                if (FrameExist) {
+                    var currentId = $('.layui-tab-title li:eq(' + dataTab.index + ')').attr("lay-id");
+                    var target = $('#CPModuleIFrame_' + currentId);
+                    var url = target.attr('src');
+                    //$.loading(true);
+                    target.attr('src', url).load(function () {
+                        //$.loading(false);
+                    });
+                }
             });
         });
     });
     //初始化消息提醒
     CPFrameInitMsg();
     //设置右侧高度
-    $(".layui-tab-content").height($(window).height() - $("#CPFrameTopNav").height() - $(".leaf-main-content-content").height()-8);
-})
+    $(".layui-tab-content").height($(window).height() - $("#CPFrameTopNav").height() - $(".leaf-main-content-content").height() - 8);
+
+});
+
 //记录当前点击的模块ID
 var Global_CPFrameCurModuleId;
 function CPFrameInnerTabClick(moduleId)
 {
     Global_CPFrameCurModuleId = moduleId;
 }
+//add by zzh 用于判断菜单是否已打开，若已打开则刷新框架页
+var FrameExist = true;
 //添加内置框架页签
 function CPFrameAddTab(tabTitle, tabUrl, tabModuleId,openType)
 {
     if (openType == 1)
     {
+        FrameExist = true;
         if ($("li[lay-id='" + tabModuleId + "']").length <= 0) {
+            FrameExist = false;
             if (tabUrl == null || tabUrl == "") {
                 tabUrl = "about:_blank;";
             }
@@ -228,6 +247,8 @@ function CPFrameAddTab(tabTitle, tabUrl, tabModuleId,openType)
             $(".layui-tab-content").append(sContext);
             layui.element.init();
         }
+        
+
         layui.element.tabChange("CPFrameModuleTab", tabModuleId);
         Global_CPFrameCurModuleId = tabModuleId;
     }

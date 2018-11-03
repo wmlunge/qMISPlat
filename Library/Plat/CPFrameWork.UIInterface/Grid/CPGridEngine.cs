@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -14,7 +15,7 @@ using System.Text;
 
 namespace CPFrameWork.UIInterface.Grid
 {
-   public class CPGridEngine
+    public class CPGridEngine
     {
         #region 获取实例 
 
@@ -24,9 +25,28 @@ namespace CPFrameWork.UIInterface.Grid
         /// <returns></returns>
         public static void StartupInit(IServiceCollection services, IConfigurationRoot Configuration)
         {
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(new EFLoggerProvider());
             // Add framework services.
-            services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
-                options.UseSqlServer(Configuration.GetConnectionString("CPCommonIns")));
+            switch (CPAppContext.CurDbType())
+            {
+                case DbHelper.DbTypeEnum.SqlServer:
+                    services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
+                       options.UseSqlServer(Configuration.GetConnectionString("CPCommonIns")).UseLoggerFactory(loggerFactory));
+                    break;
+                case DbHelper.DbTypeEnum.MySql:
+                    services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
+                       options.UseMySql(Configuration.GetConnectionString("CPCommonIns")).UseLoggerFactory(loggerFactory));
+                    break;
+                //case DbHelper.DbTypeEnum.Oracle:
+                //    services.AddDbContext<CPFrameDbContext>(options =>//手工高亮
+                //       options.UseSqlServer(Configuration.GetConnectionString("CPFrameIns")));
+                //    break;
+                default:
+                    services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
+                      options.UseSqlServer(Configuration.GetConnectionString("CPCommonIns")).UseLoggerFactory(loggerFactory));
+                    break;
+            }
 
             services.TryAddTransient<ICPCommonDbContext, CPCommonDbContext>();
             services.TryAddTransient<BaseCPGridRep, CPGridRep>();
@@ -47,7 +67,7 @@ namespace CPFrameWork.UIInterface.Grid
         private BaseCPGridRep _CPGridRep;
         private BaseRepository<CPGridColumn> _CPGridColumnRep;
         private BaseRepository<CPGridFunc> _CPGridFuncRep;
-     
+
         public CPGridEngine(
             BaseCPGridRep CPGridRep,
             BaseRepository<CPGridColumn> CPGridColumnRep,
@@ -57,7 +77,7 @@ namespace CPFrameWork.UIInterface.Grid
             this._CPGridRep = CPGridRep;
             this._CPGridColumnRep = CPGridColumnRep;
             this._CPGridFuncRep = CPGridFuncRep;
-            
+
         }
         #region 获取列表配置信息
         /// <summary>
@@ -76,7 +96,7 @@ namespace CPFrameWork.UIInterface.Grid
             {
                 nCount++;
             }
-           
+
             Expression<Func<CPGrid, dynamic>>[] eagerLoadingProperties = new Expression<Func<CPGrid, dynamic>>[nCount];
             int nIndex = 0;
             if (isLoadColumnInfo)
@@ -89,7 +109,7 @@ namespace CPFrameWork.UIInterface.Grid
                 eagerLoadingProperties[nIndex] = t => t.FuncCol;
                 nIndex++;
             }
-          
+
             ISpecification<CPGrid> specification;
             specification = new ExpressionSpecification<CPGrid>(t => t.GridCode.Equals(gridCode));
             IList<CPGrid> col = this._CPGridRep.GetByCondition(specification, eagerLoadingProperties);
@@ -101,6 +121,7 @@ namespace CPFrameWork.UIInterface.Grid
                 {
                     col[0].ColumnCol.ForEach(t => { t.FormatInitValue(); });
                     col[0].ColumnCol = col[0].ColumnCol.OrderBy(c => c.ShowOrder).ToList();
+                    col[0].SearchColumnCol = col[0].ColumnCol.Where(t => t.IsSearchShow.Equals(true)).OrderBy(c => c.SearchShowOrder).ToList();
                 }
                 if (col[0].FuncCol != null)
                 {
@@ -136,9 +157,9 @@ namespace CPFrameWork.UIInterface.Grid
                 eagerLoadingProperties[nIndex] = t => t.FuncCol;
                 nIndex++;
             }
-             
-            return  this._CPGridRep.Get(gridId, eagerLoadingProperties);
-            
+
+            return this._CPGridRep.Get(gridId, eagerLoadingProperties);
+
         }
         #endregion
 
@@ -150,8 +171,9 @@ namespace CPFrameWork.UIInterface.Grid
         /// <returns></returns>
         public bool StatisticsColumnSum(CPGrid gridObj, string otherCondition)
         {
-            gridObj.ColumnCol.ForEach(t => {
-                if(t.IsShowSum.Value)
+            gridObj.ColumnCol.ForEach(t =>
+            {
+                if (t.IsShowSum.Value)
                 {
                     t.TempSumValue = this._CPGridRep.StatisticsColumnSum(gridObj, t, otherCondition);
                     if (string.IsNullOrEmpty(t.NumberFormat) == false)
@@ -166,7 +188,7 @@ namespace CPFrameWork.UIInterface.Grid
             });
             return true;
         }
-        public   DataTable ReadData(CPGrid gridObj, int currentPage,
+        public DataTable ReadData(CPGrid gridObj, int currentPage,
            int pageSize, string otherCondition, string orderBy, out int recordSize)
         {
             if (string.IsNullOrEmpty(orderBy))
@@ -175,7 +197,7 @@ namespace CPFrameWork.UIInterface.Grid
         }
         public DataTable ReadDataAndFormat(CPGrid gridObj, int currentPage,
           int pageSize, string otherCondition, string orderBy, out int recordSize)
-        { 
+        {
             DataTable dt = this.ReadData(gridObj, currentPage, pageSize, otherCondition, orderBy, out recordSize);
             #region 重新生成新的DT
             DataTable dtNew = new DataTable();
@@ -198,12 +220,12 @@ namespace CPFrameWork.UIInterface.Grid
                     dcItem2.DataType = Type.GetType("System.String");
                     dtNew.Columns.Add(dcItem2);
                 }
-                if(item.ColumnType == CPGridEnum.ColumnTypeEnum.TextBoxEditor
+                if (item.ColumnType == CPGridEnum.ColumnTypeEnum.TextBoxEditor
                     || item.ColumnType == CPGridEnum.ColumnTypeEnum.DropDownListEditor
                     || item.ColumnType == CPGridEnum.ColumnTypeEnum.TimeSelectEditor
                     )
                 {
-                    if(string.IsNullOrEmpty(item.EventMethod)==false && string.IsNullOrEmpty(item.EventName)==false)
+                    if (string.IsNullOrEmpty(item.EventMethod) == false && string.IsNullOrEmpty(item.EventName) == false)
                     {
                         DataColumn dcItem3 = new DataColumn();
                         dcItem3.ColumnName = "ColumnEventMethod" + item.Id.ToString();
@@ -217,11 +239,11 @@ namespace CPFrameWork.UIInterface.Grid
                     }
                 }
             }
-            if (gridObj.IsGroup.Value && string.IsNullOrEmpty(gridObj.GroupField)==false)
+            if (gridObj.IsGroup.Value && string.IsNullOrEmpty(gridObj.GroupField) == false)
             {
                 //启用了分组
                 string[] gArray = gridObj.GroupField.Split(',');
-                for(int i = 0; i < gArray.Length; i++)
+                for (int i = 0; i < gArray.Length; i++)
                 {
                     if (string.IsNullOrEmpty(gArray[i]))
                         continue;
@@ -229,10 +251,10 @@ namespace CPFrameWork.UIInterface.Grid
                     Group.ColumnName = gArray[i].Trim() + "_CPGroup";
                     Group.DataType = Type.GetType("System.String");
                     dtNew.Columns.Add(Group);
-                }              
+                }
             }
             #endregion
-            int nIndex = (currentPage-1) *pageSize +1;
+            int nIndex = (currentPage - 1) * pageSize + 1;
             foreach (DataRow dr in dt.Rows)
             {
                 DataRow newRow = dtNew.NewRow();
@@ -299,10 +321,10 @@ namespace CPFrameWork.UIInterface.Grid
                                 {
                                     objValue = Convert.ToDecimal(objValue).ToString(item.NumberFormat);
                                 }
-                                catch(Exception ex) {ex.ToString(); }
-                            } 
-                               
-                           
+                                catch (Exception ex) { ex.ToString(); }
+                            }
+
+
                         }
                     }
                     else if (item.ColumnType == CPGridEnum.ColumnTypeEnum.DateTime)
@@ -384,7 +406,7 @@ namespace CPFrameWork.UIInterface.Grid
                         CPExpressionHelper.Instance.Add(CPGridExpression.DataRowKey, dr);
                         sTemp = CPExpressionHelper.Instance.RunCompile(sTemp);
                         CPExpressionHelper.Instance.Remove(CPGridExpression.DataRowKey);
-                        newRow["ColumnTargetContent" + item.Id] = sTemp.Replace("\"","'");
+                        newRow["ColumnTargetContent" + item.Id] = sTemp.Replace("\"", "'");
                         if (string.IsNullOrEmpty(item.ColumnIconOrText))
                         {
                             objValue = Convert.IsDBNull(dr[item.FieldName]) ? "" : dr[item.FieldName].ToString();
@@ -406,6 +428,10 @@ namespace CPFrameWork.UIInterface.Grid
                             if (dt.Columns[item.FieldName].DataType == Type.GetType("System.Boolean"))
                             {
                                 objValue = dr[item.FieldName.Trim()].ToString().ToLower();
+                            }
+                            else if (dt.Columns[item.FieldName].DataType == Type.GetType("System.SByte"))
+                            {
+                                objValue = Convert.ToBoolean( dr[item.FieldName.Trim()]).ToString().ToLower();
                             }
                             else
                             {
@@ -498,13 +524,14 @@ namespace CPFrameWork.UIInterface.Grid
         /// </summary>
         /// <param name="gridObj"></param>
         /// <returns></returns>
-        public Dictionary<string,string> ReadListDataAndFormat(CPGrid gridObj)
+        public Dictionary<string, string> ReadListDataAndFormat(CPGrid gridObj)
         {
             Dictionary<string, string> col = new Dictionary<string, string>();
-            gridObj.ColumnCol.ForEach(t => {
-                if(t.ColumnType == CPGridEnum.ColumnTypeEnum.DropDownListEditor)
+            gridObj.ColumnCol.ForEach(t =>
+            {
+                if (t.ColumnType == CPGridEnum.ColumnTypeEnum.DropDownListEditor)
                 {
-                    if(string.IsNullOrEmpty(t.FieldEnumDataIns))
+                    if (string.IsNullOrEmpty(t.FieldEnumDataIns))
                     {
                         throw new Exception("字段" + t.FieldName + "配置成下拉列表编辑列，但未配置下拉列表数据源数据库实例");
                     }
@@ -516,7 +543,7 @@ namespace CPFrameWork.UIInterface.Grid
                     string strSql = t.FieldEnumDataSource;
                     try
                     {
-                       
+
                         strSql = CPExpressionHelper.Instance.RunCompile(strSql);
                         DataTable dt = dbHelper.ExecuteDataTable(strSql);
                         DataTable dtNew = new DataTable();
@@ -540,7 +567,97 @@ namespace CPFrameWork.UIInterface.Grid
                         }
                         col.Add("Column" + t.Id.ToString(), CPUtils.DataTable2Json(dtNew));
                     }
-                    catch(Exception ex)
+                    catch (Exception ex)
+                    {
+                        throw new Exception("执行sql语句:" + strSql + "出错，详细信息为：" + ex.Message);
+                    }
+                }
+            });
+            return col;
+        }
+
+        /// <summary>
+        /// 如果查询字段为下拉框，获取下拉框的数据源
+        /// author：WANGYY
+        /// </summary>
+        /// <param name="gridObj"></param>
+        /// <returns></returns>
+        public Dictionary<string, string> ReadSearchListDataAndFormat(CPGrid gridObj)
+        {
+            Dictionary<string, string> col = new Dictionary<string, string>();
+            gridObj.SearchColumnCol.ForEach(t =>
+            {
+                if (t.SearchShowType == CPGridEnum.SearchShowTypeEnum.DropDownList)
+                {
+                    if (string.IsNullOrEmpty(t.FieldEnumDataIns))
+                    {
+                        throw new Exception("字段" + t.FieldName + "配置成下拉查询，但未配置下拉列表数据源数据库实例");
+                    }
+                    if (string.IsNullOrEmpty(t.FieldEnumDataSource))
+                    {
+                        throw new Exception("字段" + t.FieldName + "配置成下拉查询，但未配置下拉列表数据源");
+                    }
+                    DbHelper dbHelper = new DbHelper(t.FieldEnumDataIns, CPAppContext.CurDbType());
+                    string strSql = t.FieldEnumDataSource;
+                    try
+                    {
+
+                        strSql = CPExpressionHelper.Instance.RunCompile(strSql);
+                        DataTable dt = dbHelper.ExecuteDataTable(strSql);
+                        DataTable dtNew = new DataTable();
+                        dtNew.Columns.Add(new DataColumn() { ColumnName = "textEx", DataType = typeof(string) });
+
+
+                        dtNew.Columns.Add(new DataColumn() { ColumnName = "valueEx", DataType = typeof(string) });
+                        foreach (DataRow dr in dt.Rows)
+                        {
+                            DataRow newDR = dtNew.NewRow();
+
+                            #region 支持配置规范“ 字段  as value, 文本  as text”
+                            DataTable tb = dr.Table;
+                            foreach (DataColumn column in tb.Columns)
+                            {
+                                if (column.ColumnName.ToLower() == "value")
+                                {
+                                    if (column.DataType == Type.GetType("System.Boolean"))
+                                    {
+                                        newDR["valueEx"] = dr[column].ToString().Trim().ToLower();
+                                    }
+                                    else
+                                    {
+                                        newDR["valueEx"] = dr[column];
+                                    }
+                                    continue;
+                                }
+                                else if (column.ColumnName.ToLower() == "text")
+                                {
+                                    newDR["textEx"] = dr[column];
+                                    continue;
+                                }
+                                //为了兼容原来版本 “第一个为text，第二个为value”
+
+                                newDR["textEx"] = dr[0];
+                                if (dt.Columns[1].DataType == Type.GetType("System.Boolean"))
+                                {
+                                    newDR["valueEx"] = dr[1].ToString().Trim().ToLower();
+                                }
+                                else
+                                {
+                                    newDR["valueEx"] = dr[1];
+                                }
+                                break;
+
+
+                            }
+                            #endregion
+
+                           
+
+                            dtNew.Rows.Add(newDR);
+                        }
+                        col.Add("Column" + t.Id.ToString(), CPUtils.DataTable2Json(dtNew));
+                    }
+                    catch (Exception ex)
                     {
                         throw new Exception("执行sql语句:" + strSql + "出错，详细信息为：" + ex.Message);
                     }
@@ -558,20 +675,20 @@ namespace CPFrameWork.UIInterface.Grid
             DataTable dt = this.ReadData(grid, 1, 10, "1=2", "", out recordSize);
             //记录需要删除的字段
             List<CPGridColumn> deleteColumns = new List<CPGridColumn>();
-           List<CPGridColumn> addColumns = new List<CPGridColumn>();
+            List<CPGridColumn> addColumns = new List<CPGridColumn>();
             int nIndex = 10;
             if (grid.ColumnCol.Count > 0)
             {
                 grid.ColumnCol = grid.ColumnCol.OrderBy(t => t.ShowOrder.Value).ToList();
                 nIndex = grid.ColumnCol[grid.ColumnCol.Count - 1].ShowOrder.Value + 10;
             }
-             
+
             foreach (DataColumn dc in dt.Columns)
             {
                 if (dc.ColumnName.Equals("ROWSTAT", StringComparison.CurrentCultureIgnoreCase))
                     continue;
                 List<CPGridColumn> col = grid.ColumnCol.Where(c => c.FieldName.Equals(dc.ColumnName)).ToList();
-                if (col.Count <=0)
+                if (col.Count <= 0)
                 {
                     #region 创建新的列
 
@@ -583,7 +700,7 @@ namespace CPFrameWork.UIInterface.Grid
                     {
                         column.ColumnType = CPGridEnum.ColumnTypeEnum.DateTime;
                     }
-                    
+
                     else
                     {
                         column.ColumnType = CPGridEnum.ColumnTypeEnum.Normal;
@@ -594,12 +711,12 @@ namespace CPFrameWork.UIInterface.Grid
                     column.IsShow = true;
                     column.ShowOrder = nIndex;
                     column.ShowPosition = CPGridEnum.ShowPositionEnum.Left;
-                    column.ShowWidth = 10; 
-                    column.MaxString = 0; 
+                    column.ShowWidth = 10;
+                    column.MaxString = 0;
                     column.IsCanOrder = true;
-                    column.IsMergeRow = false;                    
-                    column.TimeFormat = "yyyy-MM-dd";                    
-                    column.TargetContent = ""; 
+                    column.IsMergeRow = false;
+                    column.TimeFormat = "yyyy-MM-dd";
+                    column.TargetContent = "";
                     column.OpenWinWidth = 1000;
                     column.OpenWinHeight = 700;
                     column.IsCanExport = true;
@@ -721,10 +838,10 @@ namespace CPFrameWork.UIInterface.Grid
         /// <param name="sysId"></param>
         /// <param name="xml"></param>
         /// <returns></returns>
-        public bool InitGridFromConfigXml( int targetSysId, byte[] bData)
+        public bool InitGridFromConfigXml(int targetSysId, byte[] bData)
         {
             DataSet ds = new DataSet();
-            System.IO.MemoryStream ms = new System.IO.MemoryStream(); 
+            System.IO.MemoryStream ms = new System.IO.MemoryStream();
             ms.Write(bData, 0, bData.Length);
             ms.Position = 0;
             ds.ReadXml(ms);

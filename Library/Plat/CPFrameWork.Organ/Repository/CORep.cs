@@ -5,12 +5,13 @@ using CPFrameWork.Utility.DbOper;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace CPFrameWork.Organ.Repository
 {
-    public abstract class BaseCODepRep: BaseRepository<CODep>
+    public abstract class BaseCODepRep : BaseRepository<CODep>
     {
         public BaseCODepRep(ICODbContext dbContext) : base(dbContext)
         {
@@ -18,6 +19,7 @@ namespace CPFrameWork.Organ.Repository
         }
         public abstract List<COUser> GetUserInDep(int depId);
         public abstract List<CODep> GetDepByUser(int userId);
+        public abstract List<CODep> GetAlLDepByDepId(int depId);
     }
     public class CODepRep : BaseCODepRep
     {
@@ -51,7 +53,16 @@ namespace CPFrameWork.Organ.Repository
                     select dep;
             return q.ToList();
         }
+        public override List<CODep> GetAlLDepByDepId(int depId)
+        {
+            CODbContext _db = this._dbContext as CODbContext;
 
+            var query = from c in _db.CODepCol
+                        where c.Id == depId
+                        select c;
+
+            return query.ToList().Concat(query.ToList().SelectMany(t => GetAlLDepByDepId(Convert.ToInt32(t.ParentId)))).ToList();
+        }
 
     }
     public class CODepUserRelateRep : BaseRepository<CODepUserRelate>
@@ -81,14 +92,14 @@ namespace CPFrameWork.Organ.Repository
         {
 
         }
-        public abstract List<CORole> GetUserStaticRoles(int userId); 
+        public abstract List<CORole> GetUserStaticRoles(int userId);
     }
     public class CORoleRep : BaseCORoleRep
     {
         public CORoleRep(ICODbContext dbContext) : base(dbContext)
         {
 
-        } 
+        }
         public override List<CORole> GetUserStaticRoles(int userId)
         {
             CODbContext _db = this._dbContext as CODbContext;
@@ -118,10 +129,15 @@ namespace CPFrameWork.Organ.Repository
         }
         public override bool DeleteOverdueKey()
         {
-            string strSql = "delete from CP_UserIdentity where (DATEDIFF(hour, LoginTime, GETDATE()) > 12)";
-            // this._dbContext.Set<COUserIdentity>().
-            DbHelper _helper = new DbHelper("CPOrganIns", CPAppContext.CurDbType());
-            _helper.ExecuteNonQuery(strSql);
+
+            //string strSql = "delete from CP_UserIdentity where (DATEDIFF(hour, LoginTime, GETDATE()) > 12)";//该语句为删除12小时前的无效数据
+
+            //DbHelper _helper = new DbHelper("CPOrganIns", CPAppContext.CurDbType());
+            //_helper.ExecuteNonQuery(strSql);
+
+            //edit by zzh DateDIFF只支持SQLserver,调整为通过EF执行删除操作。
+
+            base.DeleteByCondition(t => t.LoginTime < (DateTime.Now.AddHours(-12))); ;
             return true;
         }
     }

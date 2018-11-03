@@ -91,9 +91,14 @@ namespace CPFrameWork.Utility
                 foreach (DataColumn dataColumn in dt.Columns)
                 {
                     //dictionary.Add(dataColumn.ColumnName, dataRow[dataColumn.ColumnName]);
-                    if (dataColumn.DataType == Type.GetType("System.Boolean"))
+                    // 添加把 SByte 类型转换为string类型的
+                    if (dataColumn.DataType == Type.GetType("System.Boolean") )
                     {
                         dictionary.Add(dataColumn.ColumnName, dataRow[dataColumn.ColumnName].ToString().Trim().ToLower());
+                    }
+                    else if(dataColumn.DataType == Type.GetType("System.SByte"))
+                    {
+                        dictionary.Add(dataColumn.ColumnName, Convert.ToBoolean(dataRow[dataColumn.ColumnName]).ToString().Trim().ToLower());
                     }
                     else if (dataColumn.DataType == Type.GetType("System.DateTime"))
                     {

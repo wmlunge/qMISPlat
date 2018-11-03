@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,10 +27,31 @@ namespace CPFrameWork.Flow
         /// <returns></returns>
         public static void StartupInit(IServiceCollection services, IConfigurationRoot Configuration)
         {
+            
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(new EFLoggerProvider());
             // Add framework services.
-            services.AddDbContext<CPFlowInsDbContext>(options =>//手工高亮
-                options.UseSqlServer(Configuration.GetConnectionString("CPFlowIns")));
-
+            //services.AddDbContext<CPFlowInsDbContext>(options =>//手工高亮
+            //    options.UseSqlServer(Configuration.GetConnectionString("CPFlowIns")));
+            switch (CPAppContext.CurDbType())
+            {
+                case DbHelper.DbTypeEnum.SqlServer:
+                    services.AddDbContext<CPFlowInsDbContext>(options =>//手工高亮
+                       options.UseSqlServer(Configuration.GetConnectionString("CPFlowIns")).UseLoggerFactory(loggerFactory));
+                    break;
+                case DbHelper.DbTypeEnum.MySql:
+                    services.AddDbContext<CPFlowInsDbContext>(options =>//手工高亮
+                       options.UseMySql(Configuration.GetConnectionString("CPFlowIns")).UseLoggerFactory(loggerFactory));
+                    break;
+                //case DbHelper.DbTypeEnum.Oracle:
+                //    services.AddDbContext<CPFrameDbContext>(options =>//手工高亮
+                //       options.UseSqlServer(Configuration.GetConnectionString("CPFrameIns")));
+                //    break;
+                default:
+                    services.AddDbContext<CPFlowInsDbContext>(options =>//手工高亮
+                      options.UseSqlServer(Configuration.GetConnectionString("CPFlowIns")));
+                    break;
+            }
             services.TryAddTransient<ICPFlowInsDbContext, CPFlowInsDbContext>();
             services.TryAddTransient<BaseCPFlowInstanceRep, CPFlowInstanceRep>();
             services.TryAddTransient<BaseRepository<CPFlowInstanceTask>, CPFlowInstanceTaskRep>();

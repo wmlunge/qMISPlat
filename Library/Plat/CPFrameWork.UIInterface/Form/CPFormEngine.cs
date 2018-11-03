@@ -7,7 +7,8 @@ using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions; 
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Remotion.Linq.Parsing.Structure;
 using System;
@@ -20,10 +21,10 @@ using System.Threading.Tasks;
 
 namespace CPFrameWork.UIInterface.Form
 {
-   public class CPFormEngine
+    public class CPFormEngine
     {
 
-        
+
 
 
         #region 获取实例 
@@ -34,12 +35,31 @@ namespace CPFrameWork.UIInterface.Form
         /// <returns></returns>
         public static void StartupInit(IServiceCollection services, IConfigurationRoot Configuration)
         {
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(new EFLoggerProvider());
             // Add framework services.
-            services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
-                options.UseSqlServer(Configuration.GetConnectionString("CPCommonIns")));
+            switch (CPAppContext.CurDbType())
+            {
+                case DbHelper.DbTypeEnum.SqlServer:
+                    services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
+                       options.UseSqlServer(Configuration.GetConnectionString("CPCommonIns")).UseLoggerFactory(loggerFactory));
+                    break;
+                case DbHelper.DbTypeEnum.MySql:
+                    services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
+                       options.UseMySql(Configuration.GetConnectionString("CPCommonIns")).UseLoggerFactory(loggerFactory));
+                    break;
+                //case DbHelper.DbTypeEnum.Oracle:
+                //    services.AddDbContext<CPFrameDbContext>(options =>//手工高亮
+                //       options.UseSqlServer(Configuration.GetConnectionString("CPFrameIns")).UseLoggerFactory(loggerFactory));
+                //    break;
+                default:
+                    services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
+                      options.UseSqlServer(Configuration.GetConnectionString("CPCommonIns")).UseLoggerFactory(loggerFactory));
+                    break;
+            }
 
-            services.TryAddTransient<ICPCommonDbContext,  CPCommonDbContext>(); 
-            services.TryAddTransient<BaseCPFormRep, CPFormRep>(); 
+            services.TryAddTransient<ICPCommonDbContext, CPCommonDbContext>();
+            services.TryAddTransient<BaseCPFormRep, CPFormRep>();
             services.TryAddTransient<CPFormEngine, CPFormEngine>();
         }
         public static CPFormEngine Instance(int curUserId)
@@ -49,38 +69,39 @@ namespace CPFrameWork.UIInterface.Form
             return iObj;
         }
 
-         
+
         #endregion
         public int CurUserId { get; set; }
 
 
         private BaseCPFormRep _CPFormRep;
-        
+
         public CPFormEngine(
             BaseCPFormRep CPFormRep
-            
+
             )
         {
             this._CPFormRep = CPFormRep;
-           
+
         }
 
         public DataSet GetFormData(CPForm form, List<CPFormChildTable> childTableCol, List<CPFormField> fieldCol, string pkValue)
         {
             return this._CPFormRep.ReadRealData(form, childTableCol, fieldCol, pkValue);
         }
-        public string GetFormDataJSON(CPForm form, List<CPFormChildTable> childTableCol, List<CPFormField> fieldCol, List<CPFormFieldInit> initValueCol, 
-            string pkValue,CPFormUseScene useScene)
+        public string GetFormDataJSON(CPForm form, List<CPFormChildTable> childTableCol, List<CPFormField> fieldCol, List<CPFormFieldInit> initValueCol,
+            string pkValue, CPFormUseScene useScene)
         {
             string sJSON = "";
             Dictionary<string, string> col = new Dictionary<string, string>();
             DataSet ds = this.GetFormData(form, childTableCol, fieldCol, pkValue);
-            if (string.IsNullOrEmpty(pkValue)==false)
+            if (string.IsNullOrEmpty(pkValue) == false)
             {
                 #region 有数据
                 if (childTableCol != null && childTableCol.Count > 0)
                 {
-                    childTableCol.ForEach(t => {
+                    childTableCol.ForEach(t =>
+                    {
                         if (ds.Tables[t.TableName].Rows.Count <= 0)
                         {
                             DataRow drChild = ds.Tables[t.TableName].NewRow();
@@ -99,14 +120,15 @@ namespace CPFrameWork.UIInterface.Form
             {
                 #region 无数据，新增 ,自动给每个表加一条空的数据
                 DataRow drMain = ds.Tables[form.MainTableName].NewRow();
-                foreach(DataColumn dc in  ds.Tables[form.MainTableName].Columns)
+                foreach (DataColumn dc in ds.Tables[form.MainTableName].Columns)
                 {
                     drMain[dc.ColumnName] = DBNull.Value;
                 }
                 ds.Tables[form.MainTableName].Rows.Add(drMain);
                 if (childTableCol != null && childTableCol.Count > 0)
                 {
-                    childTableCol.ForEach(t => {
+                    childTableCol.ForEach(t =>
+                    {
                         DataRow drChild = ds.Tables[t.TableName].NewRow();
                         foreach (DataColumn dc in ds.Tables[t.TableName].Columns)
                         {
@@ -115,15 +137,15 @@ namespace CPFrameWork.UIInterface.Form
                         ds.Tables[t.TableName].Rows.Add(drChild);
                     });
                 }
-                
+
                 #endregion
             }
             //加入初始化的代码
             ds = this.InitFieldValue(form, childTableCol, fieldCol, initValueCol, ds, pkValue);
-            if(string.IsNullOrEmpty(useScene.FormLoadHandler)==false)
+            if (string.IsNullOrEmpty(useScene.FormLoadHandler) == false)
             {
                 string[] sArray = useScene.FormLoadHandler.Split(';');
-                for(int i =0;i< sArray.Length;i++)
+                for (int i = 0; i < sArray.Length; i++)
                 {
                     if (string.IsNullOrEmpty(sArray[i]))
                         continue;
@@ -139,15 +161,16 @@ namespace CPFrameWork.UIInterface.Form
                         throw new Exception("调用表单加载前扩展二次开发方法【" + sArray[i] + "】时出错，错误信息如下 ：" + ex.Message);
                     }
                 }
-             
+
             }
             foreach (DataTable dt in ds.Tables)
             {
                 col.Add(dt.TableName, CPUtils.DataTable2Json2(dt));
             }
             #region 获取所有下拉列表的数据源
-            fieldCol.ForEach(t => {
-                if(t.ControlType == CPFormEnum.ControlTypeEnum.DropDownList 
+            fieldCol.ForEach(t =>
+            {
+                if (t.ControlType == CPFormEnum.ControlTypeEnum.DropDownList
                 || t.ControlType == CPFormEnum.ControlTypeEnum.Radio || t.ControlType == CPFormEnum.ControlTypeEnum.CheckBox
                 )
                 {
@@ -155,18 +178,18 @@ namespace CPFrameWork.UIInterface.Form
                     {
                         throw new Exception("字段[" + t.FieldName + "]配置成下拉列表或复选框或单选，但未配置数据源数据库链接实例");
                     }
-                    DbHelper _helper = new DbHelper(t.ListDbIns,CPAppContext.CurDbType());
+                    DbHelper _helper = new DbHelper(t.ListDbIns, CPAppContext.CurDbType());
                     string s = t.ListSql;
                     s = CPExpressionHelper.Instance.RunCompile(s);
-                    if(string.IsNullOrEmpty(s))
+                    if (string.IsNullOrEmpty(s))
                     {
                         throw new Exception("字段[" + t.FieldName + "]配置成下拉列表或复选框或单选，但未配置数据源SQL语句");
                     }
                     DataTable dt = _helper.ExecuteDataSet(s).Tables[0];
                     DataTable dtNew = new DataTable();
-                    dtNew.Columns.Add(new DataColumn() {  ColumnName = "textEx",DataType = typeof(string)});
-                   
-                    
+                    dtNew.Columns.Add(new DataColumn() { ColumnName = "textEx", DataType = typeof(string) });
+
+
                     dtNew.Columns.Add(new DataColumn() { ColumnName = "valueEx", DataType = typeof(string) });
                     dtNew.Columns.Add(new DataColumn() { ColumnName = "listRelateEx", DataType = typeof(string) });
                     if (t.ControlType == CPFormEnum.ControlTypeEnum.DropDownList)
@@ -190,7 +213,7 @@ namespace CPFrameWork.UIInterface.Form
                             newDR["valueEx"] = dr[1];
                         }
                         newDR["listRelateEx"] = "";
-                        if(string.IsNullOrEmpty(t.ListRelateTargetField)==false)
+                        if (string.IsNullOrEmpty(t.ListRelateTargetField) == false)
                         {
                             try
                             {
@@ -203,7 +226,7 @@ namespace CPFrameWork.UIInterface.Form
                                     newDR["listRelateEx"] = dr[2];
                                 }
                             }
-                            catch(Exception ex)
+                            catch (Exception ex)
                             {
                                 throw new Exception("字段[" + t.FieldName + "]配置成下拉列表联动，请确保数据源第三个字段值为联动值，配置的SQL为：" + s + "详细信息如下：" + ex.Message.ToString());
                             }
@@ -212,10 +235,10 @@ namespace CPFrameWork.UIInterface.Form
                     }
                     col.Add(t.TableName + "_" + t.FieldName, CPUtils.DataTable2Json2(dtNew));
                 }
-                else if ( t.ControlType == CPFormEnum.ControlTypeEnum.Combox 
+                else if (t.ControlType == CPFormEnum.ControlTypeEnum.Combox
                 )
                 {
-                    DbHelper _helper = new DbHelper(t.ListDbIns,CPAppContext.CurDbType());
+                    DbHelper _helper = new DbHelper(t.ListDbIns, CPAppContext.CurDbType());
                     string s = t.ListSql;
                     s = CPExpressionHelper.Instance.RunCompile(s);
                     DataTable dt = _helper.ExecuteDataSet(s).Tables[0];
@@ -226,7 +249,7 @@ namespace CPFrameWork.UIInterface.Form
                     dtNew.Rows.Add(newDR0);
                     foreach (DataRow dr in dt.Rows)
                     {
-                        DataRow newDR = dtNew.NewRow(); 
+                        DataRow newDR = dtNew.NewRow();
                         if (dt.Columns[0].DataType == Type.GetType("System.Boolean"))
                         {
                             newDR["textEx"] = dr[0].ToString().Trim().ToLower();
@@ -243,60 +266,73 @@ namespace CPFrameWork.UIInterface.Form
             #endregion
 
             #region 如果没有拓展表，则自动构建一个隐藏的下拉列表，用来解决没有ng-repeat，不能执行ngRepeatFinished事件的问题
-            if(form.ChildTableCol.Count <=0)
+            if (form.ChildTableCol.Count <= 0)
             {
                 DataTable dtNew = new DataTable();
                 dtNew.Columns.Add(new DataColumn() { ColumnName = "textEx", DataType = typeof(string) });
 
 
                 dtNew.Columns.Add(new DataColumn() { ColumnName = "valueEx", DataType = typeof(string) });
-               
+
                 col.Add("CPFormTmpHideSelectTable", CPUtils.DataTable2Json2(dtNew));
             }
             #endregion
             sJSON = JsonConvert.SerializeObject(col);
             return sJSON;
         }
-        public DataSet InitFieldValue(CPForm form, List<CPFormChildTable> childTableCol, List<CPFormField> fieldCol,List<CPFormFieldInit> initValueCol,DataSet ds, string pkValue)
+        public DataSet InitFieldValue(CPForm form, List<CPFormChildTable> childTableCol, List<CPFormField> fieldCol, List<CPFormFieldInit> initValueCol, DataSet ds, string pkValue)
         {
             if (initValueCol == null || initValueCol.Count <= 0)
                 return ds;
             #region  先看看有没有子表的初始化，如果有，针对每个子表再搞一个新的表来，用来存储初始化字段的值，便于在JS里加新行时，再次初始化
-            childTableCol.ForEach(cTable => {
+            childTableCol.ForEach(cTable =>
+            {
                 List<CPFormField> fCol = fieldCol.Where(c => c.TableName.Equals(cTable.TableName)).ToList();
                 List<int> aFieldIdCol = new List<int>();
-                fCol.ForEach(f => {
+                fCol.ForEach(f =>
+                {
                     aFieldIdCol.Add(f.Id);
                 });
                 List<CPFormFieldInit> tmpInitCol = initValueCol.Where(c => aFieldIdCol.Contains(c.FieldId.Value)).ToList();
-                if(tmpInitCol.Count >0)
+                if (tmpInitCol.Count > 0)
                 {
                     DataTable dtNew = new DataTable();
                     dtNew.TableName = cTable.TableName + "_ExtendTableInitValue";
-                    tmpInitCol.ForEach(t => {
+                    DataTable dtInitNew = new DataTable();
+                    dtInitNew.TableName = cTable.TableName + "_ExtendTableInitTypeValue";//author:WANGYY date:20181026 desc:添加“InitType初始化类型”以便于前台更改
+                    tmpInitCol.ForEach(t =>
+                    {
                         List<CPFormField> tF = fCol.Where(c => c.Id.Equals(t.FieldId.Value)).ToList();
                         DataColumn dc = new DataColumn();
                         dc.DataType = typeof(string);
                         dc.ColumnName = tF[0].FieldName;
                         dtNew.Columns.Add(dc);
+                        DataColumn dcinit = new DataColumn();
+                        dcinit.DataType = typeof(string);
+                        dcinit.ColumnName = tF[0].FieldName;
+                        dtInitNew.Columns.Add(dcinit);
                     });
                     DataRow dr = dtNew.NewRow();
-                    foreach(DataColumn dc in dtNew.Columns)
+                    DataRow drinit = dtInitNew.NewRow();
+                    foreach (DataColumn dc in dtNew.Columns)
                     {
                         dr[dc.ColumnName] = DBNull.Value;
+                        drinit[dc.ColumnName] = DBNull.Value;
                     }
                     dtNew.Rows.Add(dr);
                     ds.Tables.Add(dtNew);
+                    dtInitNew.Rows.Add(drinit);
+                    ds.Tables.Add(dtInitNew);
                 }
             });
             #endregion
             initValueCol.ForEach(t =>
             {
                 //查找字段
-                List< CPFormField> tmpFCol =fieldCol.Where(c => c.Id.Equals(t.FieldId)).ToList();
+                List<CPFormField> tmpFCol = fieldCol.Where(c => c.Id.Equals(t.FieldId)).ToList();
                 if (tmpFCol.Count <= 0)
                     return;
-               
+
                 if (t.InitTimeType == CPFormEnum.InitTimeTypeEnum.Add)
                 {
                     #region 新增时初始化
@@ -312,14 +348,16 @@ namespace CPFrameWork.UIInterface.Form
                         int autoIndex = 0;
                         string autoIndexField = "";
                         string sValue = this.GetInitValue(t, out autoIndex, out autoIndexField);
-                        ds.Tables[tmpFCol[0].TableName].Rows[0][tmpFCol[0].FieldName] = sValue;
-                        if(t.InitType == CPFormEnum.InitTypeEnum.Auto)
+                       // ds.Tables[tmpFCol[0].TableName].Rows[0][tmpFCol[0].FieldName] = sValue;
+                        SetValue(ds.Tables[tmpFCol[0].TableName].Rows[0], tmpFCol[0].FieldName, sValue, ds.Tables[tmpFCol[0].TableName]);
+                        if (t.InitType == CPFormEnum.InitTypeEnum.Auto)
                         {
                             ds.Tables[tmpFCol[0].TableName].Rows[0][autoIndexField] = autoIndex;
                         }
-                        if(isExtendTable)
+                        if (isExtendTable)
                         {
                             ds.Tables[tmpFCol[0].TableName + "_ExtendTableInitValue"].Rows[0][tmpFCol[0].FieldName] = sValue;
+                            ds.Tables[tmpFCol[0].TableName + "_ExtendTableInitTypeValue"].Rows[0][tmpFCol[0].FieldName] = t.InitType;
                         }
                         #endregion
                     }
@@ -330,37 +368,39 @@ namespace CPFrameWork.UIInterface.Form
                     #region 无值时初始化
                     //看下是主表字段还是子表字段
                     List<CPFormChildTable> cTCol = childTableCol.Where(c => c.TableName.Equals(tmpFCol[0].TableName)).ToList();
-                    if(cTCol.Count <=0)
+                    if (cTCol.Count <= 0)
                     {
                         //主表
                         int autoIndex = 0;
                         string autoIndexField = "";
                         string sValue = this.GetInitValue(t, out autoIndex, out autoIndexField);
                         object obj = ds.Tables[tmpFCol[0].TableName].Rows[0][tmpFCol[0].FieldName];
-                        if(Convert.IsDBNull(obj) || obj == null || string.IsNullOrEmpty(obj.ToString().Trim()))
+                        if (Convert.IsDBNull(obj) || obj == null || string.IsNullOrEmpty(obj.ToString().Trim()))
                         {
-                            ds.Tables[tmpFCol[0].TableName].Rows[0][tmpFCol[0].FieldName] = sValue;
+                            //ds.Tables[tmpFCol[0].TableName].Rows[0][tmpFCol[0].FieldName] = sValue;
+                            SetValue(ds.Tables[tmpFCol[0].TableName].Rows[0], tmpFCol[0].FieldName, sValue, ds.Tables[tmpFCol[0].TableName]);
                             if (t.InitType == CPFormEnum.InitTypeEnum.Auto)
                             {
                                 ds.Tables[tmpFCol[0].TableName].Rows[0][autoIndexField] = autoIndex;
                             }
                         }
-                       
+
                     }
                     else
                     {
                         //子表
-                        foreach(DataRow dr in ds.Tables[tmpFCol[0].TableName].Rows)
+                        foreach (DataRow dr in ds.Tables[tmpFCol[0].TableName].Rows)
                         {
                             object obj = dr[tmpFCol[0].FieldName];
                             int autoIndex = 0;
                             string autoIndexField = "";
                             string sValue = this.GetInitValue(t, out autoIndex, out autoIndexField);
                             ds.Tables[tmpFCol[0].TableName + "_ExtendTableInitValue"].Rows[0][tmpFCol[0].FieldName] = sValue;
+                            ds.Tables[tmpFCol[0].TableName + "_ExtendTableInitTypeValue"].Rows[0][tmpFCol[0].FieldName] = t.InitType;
                             if (Convert.IsDBNull(obj) || obj == null || string.IsNullOrEmpty(obj.ToString().Trim()))
                             {
-                                dr[tmpFCol[0].FieldName] = sValue;
-                                
+                               // dr[tmpFCol[0].FieldName] = sValue;
+                                SetValue(dr, tmpFCol[0].FieldName, sValue, ds.Tables[tmpFCol[0].TableName]);
                                 if (t.InitType == CPFormEnum.InitTypeEnum.Auto)
                                 {
                                     //感觉自动编号的初始化在拓展表里会有问题
@@ -416,7 +456,7 @@ namespace CPFrameWork.UIInterface.Form
             });
             return ds;
         }
-        private string GetInitValue(CPFormFieldInit init,out  int autoIndex,out string autoIndexField)
+        private string GetInitValue(CPFormFieldInit init, out int autoIndex, out string autoIndexField)
         {
             autoIndex = 0;
             autoIndexField = "";
@@ -438,7 +478,7 @@ namespace CPFrameWork.UIInterface.Form
                 DbHelper _helper = new DbHelper(init.InitSqlDbIns, CPAppContext.CurDbType());
                 string sql = init.InitInfo;
                 sql = CPExpressionHelper.Instance.RunCompile(sql);
-                object obj = _helper.ExecuteScalar(  sql);
+                object obj = _helper.ExecuteScalar(sql);
                 if (Convert.IsDBNull(obj) == false && obj != null)
                     sValue = obj.ToString();
             }
@@ -447,13 +487,13 @@ namespace CPFrameWork.UIInterface.Form
             return sValue;
         }
         #region 保存数据
-        public bool SaveData(CPForm form, List<CPFormChildTable> childTableCol, 
-            List<CPFormField> fieldCol,ref string pkValue,string formDataJSON,CPFormUseScene useScene, out string errorMsg)
+        public bool SaveData(CPForm form, List<CPFormChildTable> childTableCol,
+            List<CPFormField> fieldCol, ref string pkValue, string formDataJSON, CPFormUseScene useScene, out string errorMsg)
         {
-            bool b =  this._CPFormRep.SaveData(form, childTableCol, fieldCol, ref pkValue, formDataJSON, out errorMsg);
-            if(b)
+            bool b = this._CPFormRep.SaveData(form, childTableCol, fieldCol, ref pkValue, formDataJSON, out errorMsg);
+            if (b)
             {
-               dynamic formData =   JsonConvert.DeserializeObject<dynamic>(formDataJSON);
+                dynamic formData = JsonConvert.DeserializeObject<dynamic>(formDataJSON);
                 if (string.IsNullOrEmpty(useScene.FormSaveExeSql) == false)
                 {
                     CPExpressionHelper.Instance.Add(CPFormExpression.DataRowKey, formData);
@@ -478,7 +518,7 @@ namespace CPFrameWork.UIInterface.Form
                 if (string.IsNullOrEmpty(useScene.FormSaveHandler) == false)
                 {
                     string[] sArray = useScene.FormSaveHandler.Split(';');
-                    for(int i =0;i<sArray.Length;i++)
+                    for (int i = 0; i < sArray.Length; i++)
                     {
                         if (string.IsNullOrEmpty(sArray[i]))
                             continue;
@@ -494,13 +534,36 @@ namespace CPFrameWork.UIInterface.Form
                             throw new Exception("调用表单保存后扩展二次开发方法【" + sArray[i] + "】时出错，错误信息如下 ：" + ex.Message);
                         }
                     }
-                  
+
                 }
             }
             return b;
         }
         #endregion
+        /// <summary>
+        /// 用于给DATAROW赋值，兼容各种类型数据库。
+        /// 目前发现MYSQL数据库时，RelateDel  等BOOL值 字段在赋值时会出错
+        /// 声明方法对所有情况进行处理。后继再发现特殊问题都在该方法中处理
+        /// </summary>
+        /// <param name="dr"></param>
+        /// <param name="filedName"></param>
+        /// <param name="value"></param>
+        /// <param name="dt"></param>
+        private void SetValue(DataRow dr, string fieldName, string value,DataTable dt)
+        {
+            if (dt.Columns[fieldName].DataType.Name.Equals("Boolean"))
+            {
+                dr[fieldName] = bool.Parse(value);
+            }
+            else if (dt.Columns[fieldName].DataType.Name.Equals("SByte")) {
+                dr[fieldName] = bool.Parse(value);
+            }
+            else
+            {
+                dr[fieldName] = value;
+            }
+        }
 
-      
+
     }
 }

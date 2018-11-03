@@ -4,9 +4,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic; 
-using System.Linq; 
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -57,7 +58,7 @@ namespace CPFrameWork.Global
         }
     }
 
-   
+
 
     public class CPLogRep : BaseRepository<CPLog>
     {
@@ -66,7 +67,7 @@ namespace CPFrameWork.Global
 
         }
     }
-  
+
     #endregion
 
 
@@ -75,8 +76,27 @@ namespace CPFrameWork.Global
         #region 实例 
         public static void StartupInit(IServiceCollection services, IConfigurationRoot Configuration)
         {
-            services.AddDbContext<CPFrameDbContext>(options =>//手工高亮
-               options.UseSqlServer(Configuration.GetConnectionString("CPFrameIns")));
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(new EFLoggerProvider());
+            switch (CPAppContext.CurDbType())
+            {
+                case DbHelper.DbTypeEnum.SqlServer:
+                    services.AddDbContext<CPFrameDbContext>(options =>//手工高亮
+                       options.UseSqlServer(Configuration.GetConnectionString("CPFrameIns")).UseLoggerFactory(loggerFactory));
+                    break;
+                case DbHelper.DbTypeEnum.MySql:
+                    services.AddDbContext<CPFrameDbContext>(options =>//手工高亮
+                       options.UseMySql(Configuration.GetConnectionString("CPFrameIns")).UseLoggerFactory(loggerFactory));
+                    break;
+                //case DbHelper.DbTypeEnum.Oracle:
+                //    services.AddDbContext<CPFrameDbContext>(options =>//手工高亮
+                //       options.UseSqlServer(Configuration.GetConnectionString("CPFrameIns")).UseLoggerFactory(loggerFactory));
+                //    break;
+                default:
+                    services.AddDbContext<CPFrameDbContext>(options =>//手工高亮
+                      options.UseSqlServer(Configuration.GetConnectionString("CPFrameIns")).UseLoggerFactory(loggerFactory));
+                    break;
+            }
             services.TryAddTransient<ICPFrameDbContext, CPFrameDbContext>();
             services.TryAddTransient<BaseRepository<CPLog>, CPLogRep>();
             services.TryAddTransient<CPLogHelper, CPLogHelper>();
@@ -84,15 +104,15 @@ namespace CPFrameWork.Global
         public static CPLogHelper Instance()
         {
             return CPAppContext.GetService<CPLogHelper>();
-        } 
+        }
         #endregion
-         
-        private BaseRepository<CPLog> _CPLogRep; 
+
+        private BaseRepository<CPLog> _CPLogRep;
         public CPLogHelper(
          BaseRepository<CPLog> CPLogRep
             )
         {
-            this._CPLogRep = CPLogRep; 
+            this._CPLogRep = CPLogRep;
         }
         /// <summary>
         /// 
@@ -103,7 +123,7 @@ namespace CPFrameWork.Global
         /// <param name="operRemark">日志内容</param>
         /// <param name="operType">日志类型</param>
         /// <returns></returns>
-        public bool AddLog(int userId,string userName,CPEnum.DeviceTypeEnum device,string operRemark,string operType)
+        public bool AddLog(int userId, string userName, CPEnum.DeviceTypeEnum device, string operRemark, string operType)
         {
             CPLog log = new CPLog();
             log.UserId = userId;
@@ -118,7 +138,7 @@ namespace CPFrameWork.Global
                 //获取操作IP
                 log.OperIP = CPAppContext.GetClientIP();
             }
-            catch( Exception ex)
+            catch (Exception ex)
             {
                 ex.ToString();
             }
@@ -128,12 +148,12 @@ namespace CPFrameWork.Global
                 //获取办理页面地址
                 log.OperUrl = CPAppContext.GetHttpContext().Request.Path;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
 
             }
             return this._CPLogRep.Add(log) > 0 ? true : false;
-           
+
         }
         /// <summary>
         /// 
@@ -146,7 +166,7 @@ namespace CPFrameWork.Global
         /// <param name="operIP">用户操作IP</param>
         /// <param name="operUrl">用户操作页面URL</param>
         /// <returns></returns>
-        public bool AddLog(int userId, string userName, CPEnum.DeviceTypeEnum device, string operRemark, string operType,string operUrl,string operIP)
+        public bool AddLog(int userId, string userName, CPEnum.DeviceTypeEnum device, string operRemark, string operType, string operUrl, string operIP)
         {
             CPLog log = new CPLog();
             log.UserId = userId;
@@ -155,8 +175,8 @@ namespace CPFrameWork.Global
             log.OperDevice = device;
             log.OperRemark = operRemark;
             log.OperType = operType;
-            log.OperIP = operIP; 
-            log.OperUrl = operUrl;            
+            log.OperIP = operIP;
+            log.OperUrl = operUrl;
             return this._CPLogRep.Add(log) > 0 ? true : false;
 
         }

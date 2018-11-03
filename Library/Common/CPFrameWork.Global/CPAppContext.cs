@@ -87,7 +87,7 @@ namespace CPFrameWork.Global
         #endregion
         public static DbTypeEnum CurDbType()
         {
-            return DbTypeEnum.SqlServer;
+            return DbTypeEnum.MySql;
         }
         public static HttpContext GetHttpContext()
         {
@@ -211,6 +211,73 @@ namespace CPFrameWork.Global
                 }
                 #endregion
             }
+            if (CurDbType() == DbTypeEnum.MySql)
+            {
+                #region sql
+                string strSql = @"    SELECT a.TABLE_NAME 表名    , a.ordinal_position  字段序号,   a.column_Name AS 字段名, CASE WHEN p.column_Name IS NULL THEN '0' ELSE '1' END  AS 主键
+	,CASE WHEN a.extra = 'auto_increment' THEN '1' ELSE '0' END  AS 标识,a.data_type 类型, CASE WHEN a.IS_NULLABLE ='NO' then '0' else '1' end as 允许空,
+	 case when  a.CHARACTER_MAXIMUM_LENGTH  IS NOT NULL then  a.CHARACTER_MAXIMUM_LENGTH else '0' END as 占用字节数, a.CHARACTER_MAXIMUM_LENGTH as 长度,  a.numeric_scale as 小数位,
+	a.column_default  as 默认值
+FROM information_schema.COLUMNS  a
+LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS p ON a.table_schema = p.table_schema AND a.table_name = p.TABLE_NAME AND a.COLUMN_NAME = p.COLUMN_NAME AND p.constraint_name='PRIMARY'
+inner join  (select database() as db) e on a.TABLE_SCHEMA= e.db
+where a.TABLE_NAME ='" + tableName+"' ORDER BY  a.TABLE_NAME, a.ordinal_position  ";
+                DbHelper _db = new DbHelper(dbInstance, DbTypeEnum.MySql);
+                DataTable dt = _db.ExecuteDataSet(strSql).Tables[0];
+
+                foreach (DataRow dr in dt.Rows)
+                {
+                    CPDbField f = new CPDbField();
+                    f.TableName = Convert.IsDBNull(dr["表名"]) ? "" : dr["表名"].ToString();
+                    f.FieldName = Convert.IsDBNull(dr["字段名"]) ? "" : dr["字段名"].ToString();
+                    f.IsIdentity = Convert.IsDBNull(dr["标识"]) ? false : ConvertIntToBool(int.Parse(dr["标识"].ToString()));
+                    f.IsPK = Convert.IsDBNull(dr["主键"]) ? false : ConvertIntToBool(int.Parse(dr["主键"].ToString()));
+                    f.IsAllowNull = Convert.IsDBNull(dr["允许空"]) ? true : ConvertIntToBool(int.Parse(dr["允许空"].ToString()));
+                    string sValueType = Convert.IsDBNull(dr["类型"]) ? "" : dr["类型"].ToString();
+                    if (sValueType.Equals("int", StringComparison.CurrentCultureIgnoreCase)
+                        || sValueType.Equals("bigint", StringComparison.CurrentCultureIgnoreCase)
+                        )
+                    {
+                        f.ValueType = CPEnum.FieldValueTypeEnum.Int;
+                    }
+                    else if (sValueType.Equals("nvarchar", StringComparison.CurrentCultureIgnoreCase)
+                        || sValueType.Equals("char", StringComparison.CurrentCultureIgnoreCase)
+                        || sValueType.Equals("nchar", StringComparison.CurrentCultureIgnoreCase)
+                        || sValueType.Equals("ntext", StringComparison.CurrentCultureIgnoreCase)
+                        || sValueType.Equals("varchar", StringComparison.CurrentCultureIgnoreCase)
+                        )
+                    {
+                        f.ValueType = CPEnum.FieldValueTypeEnum.String;
+                    }
+                    else if (sValueType.Equals("decimal", StringComparison.CurrentCultureIgnoreCase)
+                        || sValueType.Equals("float", StringComparison.CurrentCultureIgnoreCase)
+                        || sValueType.Equals("numeric", StringComparison.CurrentCultureIgnoreCase)
+
+                        )
+                    {
+                        f.ValueType = CPEnum.FieldValueTypeEnum.Double;
+                    }
+                    else if (sValueType.Equals("date", StringComparison.CurrentCultureIgnoreCase)
+                        || sValueType.Equals("datetime", StringComparison.CurrentCultureIgnoreCase)
+                        || sValueType.Equals("datetime2", StringComparison.CurrentCultureIgnoreCase)
+                        )
+                    {
+                        f.ValueType = CPEnum.FieldValueTypeEnum.DateTime;
+                    }
+                    else if (sValueType.Equals("uniqueidentifier", StringComparison.CurrentCultureIgnoreCase)
+                       )
+                    {
+                        f.ValueType = CPEnum.FieldValueTypeEnum.GUID;
+                    }
+                    else
+                    {
+                        f.ValueType = CPEnum.FieldValueTypeEnum.String;
+                    }
+                    f.ValueLength = Convert.IsDBNull(dr["长度"]) ? 0 :Double.Parse(dr["长度"].ToString()) >4000? 4000: int.Parse(dr["长度"].ToString());
+                    col.Add(f);
+                }
+                #endregion
+            }
             return col;
 
         }
@@ -284,6 +351,42 @@ namespace CPFrameWork.Global
                 }
                 #endregion
             }
+            else if(CurDbType() == DbTypeEnum.MySql)
+            {
+                string strSql = @"SELECT * FROM (
+
+    SELECT a.TABLE_NAME 表名    , a.ordinal_position  字段序号,   a.column_Name AS 字段名, CASE WHEN p.column_Name IS NULL THEN '0' ELSE '1' END  AS 主键
+	,CASE WHEN a.extra = 'auto_increment' THEN '1' ELSE '0' END  AS 标识,a.data_type 类型, CASE WHEN a.IS_NULLABLE ='NO' then '0' else '1' end as 允许空,
+	 case when  a.CHARACTER_MAXIMUM_LENGTH  IS NOT NULL then  a.CHARACTER_MAXIMUM_LENGTH else '0' END as 占用字节数, a.numeric_precision as 长度,  a.numeric_scale as 小数位,
+	a.column_default  as 默认值
+FROM information_schema.COLUMNS  a
+LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS p ON a.table_schema = p.table_schema AND a.table_name = p.TABLE_NAME AND a.COLUMN_NAME = p.COLUMN_NAME AND p.constraint_name='PRIMARY'
+inner join  (select database() as db) e on a.TABLE_SCHEMA= e.db
+ORDER BY  a.TABLE_NAME, a.ordinal_position  
+) AS ccc WHERE ccc.主键=1 ORDER BY ccc.表名
+			                                     ";
+                DbHelper _db = new DbHelper(dbInstance,DbTypeEnum.MySql);
+                DataTable dt = _db.ExecuteDataSet(strSql).Tables[0];
+
+                foreach (DataRow dr in dt.Rows)
+                {
+
+
+                    string TableName = Convert.IsDBNull(dr["表名"]) ? "" : dr["表名"].ToString();
+                    List<CPDbTable> tmpCol = col.Where(t => t.TableName.Equals(TableName)).ToList();
+                    if (tmpCol.Count > 0)
+                    {
+                        tmpCol[0].PKNames += "," + (Convert.IsDBNull(dr["字段名"]) ? "" : dr["字段名"].ToString());
+                    }
+                    else
+                    {
+                        CPDbTable f = new CPDbTable();
+                        f.TableName = TableName;
+                        f.PKNames = Convert.IsDBNull(dr["字段名"]) ? "" : dr["字段名"].ToString();
+                        col.Add(f);
+                    }
+                }
+            }
             return col;
 
         }
@@ -320,7 +423,7 @@ namespace CPFrameWork.Global
         #region 根据数据库实例，获取数据名
         public static string GetDbName(string dbInstance)
         {
-            DbHelper _db = new DbHelper(dbInstance, DbTypeEnum.SqlServer);
+            DbHelper _db = new DbHelper(dbInstance, CPAppContext.CurDbType());
             string db = _db.GetConnection().Database;
             _db = null;
             return db;

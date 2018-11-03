@@ -20,6 +20,9 @@ var CPFormGlobal_DeviceType = $.CPGetQuery("DeviceType"); if (CPFormGlobal_Devic
 var CPFormGlobal_FormUseInCPFlow = $.CPGetQuery("FormUseInCPFlow"); if (CPFormGlobal_FormUseInCPFlow == null || CPFormGlobal_FormUseInCPFlow == undefined) CPFormGlobal_FormUseInCPFlow = "false";
 //全局传入参数end
 
+//author:WANGYY desc:自增数据值
+var self_increase = 0;
+
 //全局变量start
 var CPFormGlobal_Scope = null;
 //全局表单对象
@@ -56,6 +59,7 @@ angular.module('CPFormEngineApp', []).controller('MyCtrl', function ($scope, $sc
         $("#CPFormContainer").width($(window).width() - 50);
     }
     $http.get(formUrl).then(function (data) {
+   
         //存储当前用户对象信息
         if (data.data.Result == false) {
             alert(data.data.ErrorMsg);
@@ -83,6 +87,11 @@ angular.module('CPFormEngineApp', []).controller('MyCtrl', function ($scope, $sc
                 if (tmpObj[nObj.TableName + "_ExtendTableInitValue"] != undefined
                     && tmpObj[nObj.TableName + "_ExtendTableInitValue"] != null) {
                     tmpObj[nObj.TableName + "_ExtendTableInitValue"] = JSON.parse(tmpObj[nObj.TableName + "_ExtendTableInitValue"]);
+                }
+                //author:WANGYY desc:获取初始化类型
+                if (tmpObj[nObj.TableName + "_ExtendTableInitTypeValue"] != undefined
+                    && tmpObj[nObj.TableName + "_ExtendTableInitTypeValue"] != null) {
+                    tmpObj[nObj.TableName + "_ExtendTableInitTypeValue"] = JSON.parse(tmpObj[nObj.TableName + "_ExtendTableInitTypeValue"]);
                 }
             });
         }
@@ -167,9 +176,18 @@ angular.module('CPFormEngineApp', []).controller('MyCtrl', function ($scope, $sc
             else {
                 //再取初始化字段的值_ExtendTableInitValue
                 var objDT = CPFormGlobal_FormObj.Data[exTableName + "_ExtendTableInitValue"];
+                var objInitType = CPFormGlobal_FormObj.Data[exTableName + "_ExtendTableInitTypeValue"];
                 //console.log(objDT);
-                if (objDT != undefined && objDT != null && objDT.length > 0) {
-                    nObj[item] = objDT[0][item];
+                if (objDT !== undefined && objDT !== null && objDT.length > 0) {
+                    if (objInitType[0][item] === "Auto")//author:WANGG date:20181026 desc:当为自动编号时，复制行新增1
+                    {
+                        self_increase++;
+                        var itemnum = getN(objDT[0][item]);
+                        var resultvalue = objDT[0][item].replace(itemnum, '{0}');
+                        var itemValue= Number(itemnum) + self_increase;
+                        nObj[item] = resultvalue.replace('{0}', itemValue);
+                    } else
+                        nObj[item] = objDT[0][item];
                 }
                 else {
                     nObj[item] = "";
@@ -183,6 +201,11 @@ angular.module('CPFormEngineApp', []).controller('MyCtrl', function ($scope, $sc
             $scope.$applyAsync();
         }
     };
+
+    function getN(s) {
+        return s.replace(/[^0-9]/ig, "");
+
+    } 
     //拓展表添加 新行end
 
     //拓展表删除行start

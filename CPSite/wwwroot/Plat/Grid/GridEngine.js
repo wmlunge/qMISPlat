@@ -3,30 +3,35 @@
 var CPGridGlobal_GridCode = $.CPGetQuery("GridCode"); if (CPGridGlobal_GridCode == null || CPGridGlobal_GridCode == undefined) CPGridGlobal_GridCode = "";
 //是否导出到Excel
 var CPGridGlobal_IsExportToExcel = $.CPGetQuery("IsExportToExcel"); if (CPGridGlobal_IsExportToExcel == null || CPGridGlobal_IsExportToExcel == undefined) CPGridGlobal_IsExportToExcel = "false";
-var CPGridGlobal_ExportToExcelPageSize = $.CPGetQuery("ExportToExcelPageSize"); if (CPGridGlobal_ExportToExcelPageSize == null || CPGridGlobal_ExportToExcelPageSize == undefined) CPGridGlobal_ExportToExcelPageSize = "20"; 
+var CPGridGlobal_ExportToExcelPageSize = $.CPGetQuery("ExportToExcelPageSize"); if (CPGridGlobal_ExportToExcelPageSize == null || CPGridGlobal_ExportToExcelPageSize == undefined) CPGridGlobal_ExportToExcelPageSize = "20";
 //当前设备
 //1:PC浏览器   2：IOS手机 3 ：安卓手机4 ：IOS平板 5：安卓平板
 var CPGridGlobal_DeviceType = $.CPGetQuery("DeviceType"); if (CPGridGlobal_DeviceType == null || CPGridGlobal_DeviceType == undefined) CPGridGlobal_DeviceType = "1";
 //记录查询条件
-var CPGridGlobal_OtherCondition = $.CPGetQuery("OtherCondition"); if (CPGridGlobal_OtherCondition == null || CPGridGlobal_OtherCondition == undefined) CPGridGlobal_OtherCondition = ""; 
-var CPGridGlobal_CurPage = $.CPGetQuery("CurPage"); if (CPGridGlobal_CurPage == null || CPGridGlobal_CurPage == undefined) CPGridGlobal_CurPage = 1; 
+var CPGridGlobal_OtherCondition = $.CPGetQuery("OtherCondition"); if (CPGridGlobal_OtherCondition == null || CPGridGlobal_OtherCondition == undefined) CPGridGlobal_OtherCondition = "";
+var CPGridGlobal_CurPage = $.CPGetQuery("CurPage"); if (CPGridGlobal_CurPage == null || CPGridGlobal_CurPage == undefined) CPGridGlobal_CurPage = 1;
 //全局传入参数end
 
 //全局变量start 
 //全局表单对象
-var CPGridGlobal_GridObj = null;  
+var CPGridGlobal_GridObj = null;
 
 //记录所有的查询字段名
 var CPGridGlobal_AllSearchField = new Array();
 var CPGridGlobal_AllSearchFieldTip = "";
+var CPGridGlobal_SearchListDataObj = new Array();//add by zzh  用于存储下拉查询条件的数据源
 //记录排序 字段
 var CPGridGlobal_OrderBy = "";
+
+//author:WAGYY
+//date:20180831
+//记录查询区内容 
+var CPGridGlobal_AllSearchContent = "";
 /**
  *公用函数区start
  */
 //刷新当前列表
-function CPGridRefresh()
-{
+function CPGridRefresh() {
     var grid = $("#CPGirdDiv").data("kendoGrid");
     if (grid.pager != undefined && grid.pager != null) {
         CPGridGlobal_CurPage = grid.pager.page();
@@ -40,23 +45,21 @@ function CPGridRefresh()
     InitGridAndLoadData();
 }
 //获取选中checkbox的值
-function CPGridGetSelChkData()
-{
+function CPGridGetSelChkData() {
     var sSelValue = "";
     $.each($(".CPGridChkCss"), function (nIndex, nObj) {
         if ($(nObj).is(':checked')) {
             if (sSelValue == "")
                 sSelValue = $(nObj).val();
             else
-                sSelValue += "@" +  $(nObj).val();
+                sSelValue += "@" + $(nObj).val();
         }
     });
-   
+
     return sSelValue;
 }
 //获取选中radio的值
-function CPGridGetRadioSelData()
-{
+function CPGridGetRadioSelData() {
     var sSelValue = "";
     $.each($(".CPGridRadioCss"), function (nIndex, nObj) {
         if ($(nObj).is(':checked')) {
@@ -71,8 +74,7 @@ function CPGridGetRadioSelData()
 /**
  *公用函数区end
  */
-function FormatGetDataUrl()
-{
+function FormatGetDataUrl() {
     var getDataUrl = CPWebRootPath + "/api/GridEngine/GetGridData?GridCode=" + CPGridGlobal_GridCode + "&CurUserId=" + CPCurUserId + "&CurUserIden=" + CPCurUserIden;
     getDataUrl += "&IsReturnRealData=true";
     getDataUrl += "&OtherCondition=" + escape(CPGridGlobal_OtherCondition);
@@ -96,8 +98,7 @@ function FormatGetDataUrl()
     return getDataUrl;
 }
 //加载时设置html显隐
-function SetHtmlShowOrHideWhenLoad()
-{ 
+function SetHtmlShowOrHideWhenLoad() {
     $("#divLoading").hide();
     $("#CPGridSearch").show();
     $("#CPGridButton").show();
@@ -106,15 +107,16 @@ function SetHtmlShowOrHideWhenLoad()
         $("#CPGridSearch").hide();
     }
     else {
-        $("#CPGridSearchTxt").attr("placeholder", "可搜索" + CPGridGlobal_AllSearchFieldTip);
-        $("#CPGridSearchTxt").attr("title", "可搜索" + CPGridGlobal_AllSearchFieldTip);
+        if (CPGridGlobal_AllSearchContent.length <= 0) {
+            $("#CPGridSearchTxt").attr("placeholder", "可搜索" + CPGridGlobal_AllSearchFieldTip);
+            $("#CPGridSearchTxt").attr("title", "可搜索" + CPGridGlobal_AllSearchFieldTip);
+        }
     }
 }
 //设置元素的宽度
-function SetGridHeightAndWidth()
-{
+function SetGridHeightAndWidth() {
     var nWidth = $(window).width();
-    nWidth = nWidth - $("#CPGridSearchTxt").width() - $("#CPBtnSearch").width()-48;
+    nWidth = nWidth - $("#CPGridSearchTxt").width() - $("#CPBtnSearch").width() - 48;
     $("#CPGridButton").width(nWidth);
 }
 //设置时间编辑控件
@@ -131,8 +133,7 @@ function SetGridEditTimeSelectControl() {
 }
 
 //设置操作按钮start
-function InitGridFunc()
-{
+function InitGridFunc() {
     var btnHtml = "";
     $.each(CPGridGlobal_GridObj.FuncCol, function (nIndex, nObj) {
         btnHtml += "<button type=\"button\" id=\"CPGrid_FuncBtn_" + nObj.Id + "\" class=\"CPGridFuncBtn_Css\"><i class=\"icon iconfont " + nObj.FuncIcon + "\"  ></i><span>" + nObj.FuncTitle + "</span></button>";
@@ -141,8 +142,7 @@ function InitGridFunc()
     $.each(CPGridGlobal_GridObj.FuncCol, function (nIndex, nObj) {
         $("#CPGrid_FuncBtn_" + nObj.Id).kendoButton({
             click: function (e) {
-                if (nObj.FuncType == 0)
-                {
+                if (nObj.FuncType == 0) {
                     //执行自定义脚本
                     eval(nObj.FuncContext);
                 }
@@ -193,20 +193,20 @@ function InitGridFunc()
                         OpenNewModel(toUrl, "导出Excel", 200, 100);
                     });
                     //alert(000);
-                    
+
                 }
                 else if (nObj.FuncType == 2) {
                     //导出pdf
                 }
                 else if (nObj.FuncType == 3) {
                     //在本窗口打开页面
-                    window.location.href = CPWebRootPath +nObj.FuncContext;
+                    window.location.href = CPWebRootPath + nObj.FuncContext;
                 }
                 else if (nObj.FuncType == 4) {
                     //在新窗口打开页面
-                    window.open(CPWebRootPath +nObj.FuncContext);
+                    window.open(CPWebRootPath + nObj.FuncContext);
                 }
-               
+
                 else if (nObj.FuncType == 5) {
                     //内置修改
                     CPGridUpdateData();
@@ -297,15 +297,13 @@ function InitGridFunc()
 }
 //设置操作按钮end
 //列表列点击方法start
-function CPGridColumnOpenLink(obj)
-{
+function CPGridColumnOpenLink(obj) {
     var title = $(obj).attr("data-title");
     var TargetContent = $(obj).attr("data-TargetContent");
     var TargetType = $(obj).attr("data-TargetType");
     var OpenWinWidth = $(obj).attr("data-OpenWinWidth");
     var OpenWinHeight = $(obj).attr("data-OpenWinHeight");
-    if (Number(TargetType) == 1)
-    {
+    if (Number(TargetType) == 1) {
         //_self
         //自动添加，解决生产环境和开发环境的问题
         TargetContent = CPWebRootPath + TargetContent;
@@ -351,7 +349,7 @@ function CPGridColumnOpenLink(obj)
             OpenNewModel(tmpUrlTmp, title, OpenWinWidth, OpenWinHeight);
         }
     }
-    
+
     else if (Number(TargetType) == 6) {
         //parent.OpenNewModel
         try {
@@ -400,11 +398,9 @@ function CPGridColumnOpenLink(obj)
 
 //列表列点击方法end
 //创建列 方法start
-function CPGridGetColumnAlign(columnItem)
-{
+function CPGridGetColumnAlign(columnItem) {
     var align = "left";
-    if (columnItem.ShowPosition == 1)
-    {
+    if (columnItem.ShowPosition == 1) {
         align = "left";
     }
     else if (columnItem.ShowPosition == 2) {
@@ -415,8 +411,7 @@ function CPGridGetColumnAlign(columnItem)
     }
     return align;
 }
-function CPGridFormColumnFooter(columnItem, kendoGridColumnItem)
-{
+function CPGridFormColumnFooter(columnItem, kendoGridColumnItem) {
     if (columnItem.IsShowSum) {
         kendoGridColumnItem.footerTemplate = function (dataItem) {
             var sumTip = "";
@@ -439,7 +434,7 @@ function CPGridFormColumnFooter(columnItem, kendoGridColumnItem)
         };
         kendoGridColumnItem.footerAttributes = {
             //"class": "table-footer-cell",
-           style: "text-align:" + CPGridGetColumnAlign(columnItem) + ";"
+            style: "text-align:" + CPGridGetColumnAlign(columnItem) + ";"
         }
     }
     return kendoGridColumnItem;
@@ -448,23 +443,26 @@ var nLockIndex = 1;
 function CPGridCreateColumn(columnItem, ListDataObj) {
 
     var gridId = "CPGirdDiv";
-    if (columnItem.IsSearchShow) {
-        CPGridGlobal_AllSearchField.push(columnItem.FieldName);
-        if (CPGridGlobal_AllSearchFieldTip == "") {
-            CPGridGlobal_AllSearchFieldTip = columnItem.ColumnTitle;
+    if (CPGridGlobal_GridObj.SearchModel == 1) {
+        if (columnItem.IsSearchShow) {
+            CPGridGlobal_AllSearchField.push(columnItem.FieldName);
+            if (CPGridGlobal_AllSearchFieldTip == "") {
+                CPGridGlobal_AllSearchFieldTip = columnItem.ColumnTitle;
 
-        } else {
-            CPGridGlobal_AllSearchFieldTip += "," + columnItem.ColumnTitle;
+            } else {
+                CPGridGlobal_AllSearchFieldTip += "," + columnItem.ColumnTitle;
+            }
         }
+    }
+    else if (CPGridGlobal_GridObj.SearchModel == 2) {
+
     }
     var kendoGridColumnItem = null;
     var bTmpIsShow = columnItem.IsShow;
-    if (CPGridGlobal_IsExportToExcel == "true")
-    {
+    if (CPGridGlobal_IsExportToExcel == "true") {
         if (columnItem.IsCanExport == false)
             bTmpIsShow = false;
-        if (columnItem.ColumnType == 2 || columnItem.ColumnType == 3)
-        {
+        if (columnItem.ColumnType == 2 || columnItem.ColumnType == 3) {
             //复选，单选不导出
             bTmpIsShow = false;
         }
@@ -475,13 +473,12 @@ function CPGridCreateColumn(columnItem, ListDataObj) {
             locked = true;
         }
         nLockIndex++;
-        if (columnItem.IsShowSum)
-        {
+        if (columnItem.IsShowSum) {
             CPGrid_IsHasFooter = true;
         }
         if (columnItem.ColumnType == 1) {
             //序号列
-            kendoGridColumnItem={
+            kendoGridColumnItem = {
                 field: "Column" + columnItem.Id.toString(),
                 title: columnItem.ColumnTitle,
                 filterable: false,
@@ -500,15 +497,17 @@ function CPGridCreateColumn(columnItem, ListDataObj) {
         }
         else if (columnItem.ColumnType == 2) {
             //复选列
-            kendoGridColumnItem={
+            kendoGridColumnItem = {
                 field: "Column" + columnItem.Id.toString(),
                 title: columnItem.ColumnTitle,
                 filterable: false,
                 sortable: false,
                 locked: locked,
                 width: 40,
-                headerTemplate: '<input  class="CPGridChkCssAll"  type="checkbox" id="' + gridId + '_Chk_ChkAll" style="cursor:pointer;" data-gridid="' + gridId + '" onclick="GridChkAllClick(this);" /><label for=\"' + gridId + '_Chk_ChkAll\" ></label>',
-                template: "<input type='checkbox'  class='CPGridChkCss'    id='" + gridId + "_Chk_#: " + "ColumnCPGridPK #' style='cursor:pointer;'  value='#: " + "ColumnCPGridPK #' data-gridid='" + gridId + "' data-childChk='true'  /><label for=\"" + gridId + "_Chk_#: " + "ColumnCPGridPK #\"></label>",
+                //headerTemplate: '<input  class="CPGridChkCssAll"  type="checkbox" id="' + gridId + '_Chk_ChkAll" style="cursor:pointer;" data-gridid="' + gridId + '" onclick="GridChkAllClick(this);" /><label for=\"' + gridId + '_Chk_ChkAll\" ></label>',
+                headerTemplate: '<input  class="CPGridChkCssAll"  type="checkbox" id="' + gridId + '_Chk_ChkAll" style="cursor:pointer;" data-gridid="' + gridId + '" onclick="GridChkAllClick(this);" />',
+                //template: "<input type='checkbox'  class='CPGridChkCss'  id='" + gridId + "_Chk_#: " + "ColumnCPGridPK #' style='cursor:pointer;'  value='#: " + "ColumnCPGridPK #' data-gridid='" + gridId + "' data-childChk='true'  /><label for=\"" + gridId + "_Chk_#: " + "ColumnCPGridPK #\"></label>",
+                template: "<input type='checkbox'  class='CPGridChkCss'  onclick='CustomFun_OnClickKeyField(this)'  id='" + gridId + "_Chk_#: " + "ColumnCPGridPK #' style='cursor:pointer;'  value='#: " + "ColumnCPGridPK #' data-gridid='" + gridId + "' data-childChk='true'  />",
                 attributes: {
                     style: "text-align: center;"
                 },
@@ -522,7 +521,7 @@ function CPGridCreateColumn(columnItem, ListDataObj) {
         }
         else if (columnItem.ColumnType == 3) {
             //单选列
-            kendoGridColumnItem ={
+            kendoGridColumnItem = {
                 field: "Column" + columnItem.Id.toString(),
                 title: columnItem.ColumnTitle,
                 filterable: false,
@@ -544,11 +543,25 @@ function CPGridCreateColumn(columnItem, ListDataObj) {
         else if (columnItem.ColumnType == 4) {
             //普通列
 
-            kendoGridColumnItem ={
+            kendoGridColumnItem = {
                 template: function (dataItem) {
                     var sHtml = "";
                     var sStyle = "";
                     var sColumnValue = dataItem["Column" + columnItem.Id.toString()];
+                    //add by zzh 20180912 用于展示列查询方式为下拉列表时，将列内容从Value转为TEXT start
+                    if (columnItem.SearchShowType == 3) {
+                        var valuesobj = JSON.parse(CPGridGlobal_SearchListDataObj["Column" + columnItem.Id]);
+                        $(valuesobj).each(function (index, value) {
+                            if (value["valueEx"] == sColumnValue) {
+                                sColumnValue = value["textEx"];
+                                return false;
+                            }
+                        });
+                    }
+                    else {
+                        sColumnValue = dataItem["Column" + columnItem.Id.toString()];
+                    }
+                    //add by zzh 20180912 用于展示列查询方式为下拉列表时，将列内容从Value转为TEXT end
                     var sColumnValueAll = sColumnValue;
                     if (columnItem.MaxString > 0) {
                         // 配置了最多显示字符数
@@ -581,12 +594,12 @@ function CPGridCreateColumn(columnItem, ListDataObj) {
                     style: "text-align:" + CPGridGetColumnAlign(columnItem) + ";"
                 }
             };
-            
+
             //普通列
         }
         else if (columnItem.ColumnType == 5) {
             //日期列
-            kendoGridColumnItem ={
+            kendoGridColumnItem = {
                 template: function (dataItem) {
                     var sHtml = "";
                     var sStyle = "";
@@ -615,7 +628,7 @@ function CPGridCreateColumn(columnItem, ListDataObj) {
         }
         else if (columnItem.ColumnType == 6) {
             //列表内置删除列
-            kendoGridColumnItem ={
+            kendoGridColumnItem = {
                 template: function (dataItem) {
                     var sHtml = "";
                     var sTxt = "icon-close";
@@ -645,7 +658,7 @@ function CPGridCreateColumn(columnItem, ListDataObj) {
         }
         else if (columnItem.ColumnType == 7) {
             //模板列
-            kendoGridColumnItem ={
+            kendoGridColumnItem = {
                 template: function (dataItem) {
                     var sColumnValue = dataItem["Column" + columnItem.Id.toString()];
                     return sColumnValue;
@@ -654,7 +667,7 @@ function CPGridCreateColumn(columnItem, ListDataObj) {
                 title: columnItem.ColumnTitle,
                 filterable: false,
                 locked: locked,
-                sortable:false,
+                sortable: false,
                 headerTemplate: "<span title=\"" + columnItem.ColumnTitle + "\">" + columnItem.ColumnTitle + "</span>",
                 width: columnItem.ShowWidth * 14 + 2,
                 attributes: {
@@ -669,7 +682,7 @@ function CPGridCreateColumn(columnItem, ListDataObj) {
         }
         else if (columnItem.ColumnType == 8) {
             //图片超链接列
-            kendoGridColumnItem ={
+            kendoGridColumnItem = {
                 template: function (dataItem) {
                     var sHtml = "";
                     var sTxt = dataItem["Column" + columnItem.Id.toString()];
@@ -682,9 +695,9 @@ function CPGridCreateColumn(columnItem, ListDataObj) {
                     }
                     sHtml += "<a href='javascript:;'  class='GridHref' ";
                     sHtml += " data-title=\"" + dataItem["Column" + columnItem.Id.toString()] + "\"";
-                    sHtml += " data-TargetContent=\"" + dataItem["ColumnTargetContent" + columnItem.Id.toString()]  + "\"";
+                    sHtml += " data-TargetContent=\"" + dataItem["ColumnTargetContent" + columnItem.Id.toString()] + "\"";
                     sHtml += " data-TargetType=\"" + columnItem.TargetType + "\"";
-                    sHtml += " data-OpenWinWidth=\"" + columnItem.OpenWinWidth  + "\"";
+                    sHtml += " data-OpenWinWidth=\"" + columnItem.OpenWinWidth + "\"";
                     sHtml += " data-OpenWinHeight=\"" + columnItem.OpenWinHeight + "\"";
                     sHtml += "  onclick = 'CPGridColumnOpenLink(this)' > <i class=\"icon iconfont " + sTxt + "\"  style='font-size:22px;" + sColor + "' ></i></a>";
 
@@ -709,13 +722,24 @@ function CPGridCreateColumn(columnItem, ListDataObj) {
         }
         else if (columnItem.ColumnType == 9) {
             //文字超链接列
-            kendoGridColumnItem ={
+            kendoGridColumnItem = {
                 template: function (dataItem) {
                     var sHtml = "";
                     var sTxt = dataItem["Column" + columnItem.Id.toString()];
                     if (columnItem.ColumnIconOrText != "") {
                         sTxt = columnItem.ColumnIconOrText;
                     }
+                    //add by zzh 20180912 用于展示列查询方式为下拉列表时，将列内容从Value转为TEXT start
+                    if (columnItem.SearchShowType == 3) {
+                        var valuesobj = JSON.parse(CPGridGlobal_SearchListDataObj["Column" + columnItem.Id]);
+                        $(valuesobj).each(function (index, value) {
+                            if (value["valueEx"] == sTxt) {
+                                sTxt = value["textEx"];
+                                return false;
+                            }
+                        });
+                    }
+                    //add by zzh 20180912 用于展示列查询方式为下拉列表时，将列内容从Value转为TEXT end
                     sHtml += "<a href='javascript:;'  class='GridHref' ";
                     sHtml += " data-title=\"" + dataItem["Column" + columnItem.Id.toString()] + "\"";
                     sHtml += " data-TargetContent=\"" + dataItem["ColumnTargetContent" + columnItem.Id.toString()] + "\"";
@@ -745,7 +769,7 @@ function CPGridCreateColumn(columnItem, ListDataObj) {
         }
         else if (columnItem.ColumnType == 10) {
             //文本框编辑列
-            kendoGridColumnItem ={
+            kendoGridColumnItem = {
                 template: function (dataItem) {
                     var event = "";
                     if (columnItem.EventMethod != null && columnItem.EventMethod != "" && columnItem.EventName != null && columnItem.EventName != "") {
@@ -774,7 +798,7 @@ function CPGridCreateColumn(columnItem, ListDataObj) {
         }
         else if (columnItem.ColumnType == 11) {
             //下拉框编辑列
-            kendoGridColumnItem ={
+            kendoGridColumnItem = {
                 template: function (dataItem) {
                     var event = "";
                     if (columnItem.EventMethod != null && columnItem.EventMethod != "" && columnItem.EventName != null && columnItem.EventName != "") {
@@ -819,7 +843,7 @@ function CPGridCreateColumn(columnItem, ListDataObj) {
         }
         else if (columnItem.ColumnType == 12) {
             //时间选择编辑列
-            kendoGridColumnItem ={
+            kendoGridColumnItem = {
                 template: function (dataItem) {
                     var event = "";
                     if (columnItem.EventMethod != null && columnItem.EventMethod != "" && columnItem.EventName != null && columnItem.EventName != "") {
@@ -872,28 +896,113 @@ function CPGridCreateColumn(columnItem, ListDataObj) {
 
         kendoGridColumnItem = CPGridFormColumnFooter(columnItem, kendoGridColumnItem);
     }
-    
+
     return kendoGridColumnItem;
 }
 //创建列 方法end
-function GetGridColumnByColumnId(columnId)
-{
+function GetGridColumnByColumnId(columnId) {
     var rItem;
     $.each(CPGridGlobal_GridObj.ColumnCol, function (nIndex, nObj) {
-        if (Number(columnId) == Number(nObj.Id))
-        {
+        if (Number(columnId) == Number(nObj.Id)) {
             rItem = nObj;
             return;
         }
     });
     return rItem;
 }
+
+//author:WAGYY; date:20180831;desc:排列式查看展示形式
+function CPGridCreateQueryColumn(SearchListDataObj) {
+    $.each(CPGridGlobal_GridObj.SearchColumnCol, function (nIndex, columnItem) {
+        if (columnItem.IsSearchShow) {
+            CPGridGlobal_AllSearchField.push(columnItem.FieldName);
+            //查询字段展示控件
+            var columnItemContent = "<label style='padding-right:5px'>" + columnItem.ColumnTitle + "</label>";
+            var sHtml = "";
+            switch (columnItem.SearchShowType) {
+                case 1://文本框               
+                    sHtml = "<input type='text' id='CPGridQueryControl_" + columnItem.FieldName + "' class='SearchArrayTextBoxCss'/>";
+                    break;
+                case 2://时间选择框
+                    var timeFormat = CPTrim(columnItem.TimeFormat);
+                    if (timeFormat == "")
+                        timeFormat = "yyyy-MM-dd";
+                    timeFormat = timeFormat.toLowerCase();
+                    if (timeFormat == "yyyy-mm-dd" || timeFormat == "yyyy年mm月dd日" || timeFormat == "dd-mm-yy" || timeFormat == "yy-mm-dd") {
+                        timeFormat = "date";
+                    }
+                    else if (timeFormat == "mm月dd日") {
+                        timeFormat = "date";
+                    }
+                    else if (timeFormat == "yyyy年mm月" || timeFormat == "mm-yy") {
+                        timeFormat = "month";
+                    }
+                    else if (timeFormat == "yyyy年mm月dd日  hh:mm" || timeFormat == "yyyy年mm月dd日  hh:mm:ss"
+                        || timeFormat == "yyyy-mm-dd hh:mm" || timeFormat == "yyyy-mm-dd hh:mm:ss"
+                    ) {
+                        timeFormat = "datetime";
+                    }
+                    else if (timeFormat == "hh:mm"
+                        || timeFormat == "hh:mm:ss"
+                    ) {
+                        timeFormat = "time";
+                    }
+
+                    //时间查询方式
+                    sHtml += "<span class='SearchCPGridDateTextBoxSearchModeCss'>";
+                    sHtml += "<select id='SearchMode_" + columnItem.FieldName + "' style=\"width:60px\" onchange='changeSearchMode(\"" + columnItem.FieldName + "\",\"" + timeFormat + "\")'>";
+                    sHtml += "<option value='1'>等于</option>";
+                    sHtml += "<option value='2'>大于</option>";
+                    sHtml += "<option value='3'>小于</option>";
+                    sHtml += "<option value='4'>大于等于</option>";
+                    sHtml += "<option value='5'>小于等于</option>";
+                    sHtml += "<option value='6'>区间</option>";
+                    sHtml += "</select></span>";
+
+                    sHtml += "<span id='CPGridSpan_" + columnItem.FieldName + "'>";
+                    sHtml += "<input type='text' id='CPGridQueryControl_" + columnItem.FieldName + "'class='layerTimeSel SearchCPGridEditTextBoxCss' data-timeFormat=\"" + timeFormat + "\" />";
+                    sHtml += "<label class='SearchDefaultDateMode'>至</label>";
+                    sHtml += "<input type='text' id='CPGridQueryControl_" + columnItem.FieldName + "_2'class='layerTimeSel SearchCPGridEditTextBoxCss SearchDefaultDateMode' data-timeFormat=\"" + timeFormat + "\" />";
+                    sHtml += "</span >";
+
+
+
+                    break;
+                case 3://下拉框                    
+                    sHtml += "<select id='CPGridQueryControl_" + columnItem.FieldName + "' class='SearchCPGridEditListCss' >";
+                    var tObjT = JSON.parse(SearchListDataObj["Column" + columnItem.Id]);
+                    sHtml += "<option value=\"0\">请选择</option>";
+                    for (var i = 0; i < tObjT.length; i++) {
+                        // alert(tObjT[i].servs);                                          
+                        sHtml += "<option value=\"" + tObjT[i].valueEx + "\">" + tObjT[i].textEx + "</option>";
+                    }
+                    sHtml += "</select>";
+                    break;
+            }
+            CPGridGlobal_AllSearchContent += "<span class='SearchCPGridSpanCss'>" + columnItemContent + sHtml + "</span>";
+
+        }
+    });
+}
+//author:WANGYY date:20180904  desc:更改时间查询选择模式[等于、小于、大于、小于等于、大于等于、区间]
+function changeSearchMode(FieldName) {
+    var objsel = $("#SearchMode_" + FieldName);
+    if (objsel.val() != "6") {
+        if ($(".SearchBlockDateMode").hasClass("SearchBlockDateMode")) {
+            $(".SearchBlockDateMode").addClass("SearchDefaultDateMode");
+        }
+        $(".SearchBlockDateMode").removeClass("SearchBlockDateMode");
+        return;
+    }
+    if ($(".SearchDefaultDateMode").hasClass("SearchDefaultDateMode")) $(".SearchDefaultDateMode").addClass("SearchBlockDateMode");
+    $(".SearchDefaultDateMode").removeClass("SearchDefaultDateMode");
+
+}
 //初始化列表start
 //记录是否显示底部统计值行
 var CPGrid_IsHasFooter = false;
 
-function InitGridAndLoadData()
-{
+function InitGridAndLoadData() {
     //加载 
     var url = CPWebRootPath + "/api/GridEngine/GetGridInfo?GridCode=" + CPGridGlobal_GridCode + "&CurUserId=" + CPCurUserId + "&CurUserIden=" + CPCurUserIden;
     url += "&OtherCondition=" + escape(CPGridGlobal_OtherCondition);
@@ -910,7 +1019,7 @@ function InitGridAndLoadData()
             continue;
         url += "&" + sResultArray[mm];
     }
-    var getDataUrl = FormatGetDataUrl();    
+    var getDataUrl = FormatGetDataUrl();
     $.getJSON(url, function (data) {
         console.log(data);
         CPGridGlobal_GridObj = data.Grid;
@@ -918,35 +1027,37 @@ function InitGridAndLoadData()
             alert(data.ErrorMsg);
             return false;
         }
-        //加载扩展脚本
-        if (CPGridGlobal_GridObj.JsEx != null && CPGridGlobal_GridObj.JsEx != "") {
-            // document.write(CPFormGlobal_FormObj.Config.UseSceneCol[0].FormScript)
-            $("#divCPGridJSContainer").html(CPGridGlobal_GridObj.JsEx);
-        }
+
         //设置页面标题
         $(document).attr("title", CPGridGlobal_GridObj.GridTitle);
         InitGridFunc();
         var gridId = "CPGirdDiv";//DIV ID
         var ListDataObj = null;
-        if (data.ListDataJson != null && data.ListDataJson != "")
-        {
+        if (data.ListDataJson != null && data.ListDataJson != "") {
             ListDataObj = JSON.parse(data.ListDataJson);
         }
+        //author:WANGYY date:20180831 desc:创建并存储查询条件配置信息
+        var SearchListDataObj = null;
+        if (data.SearchListDataJson != null && data.SearchListDataJson != "") {
+            //SearchListDataObj = JSON.parse(data.SearchListDataJson);
+            CPGridGlobal_SearchListDataObj = JSON.parse(data.SearchListDataJson);
+        }
+
+
         //绑定列类型start
         var kendoGridColumn = new Array();
         CPGridGlobal_AllSearchField.splice(0, CPGridGlobal_AllSearchField.length);
         CPGridGlobal_AllSearchFieldTip = "";
         nLockIndex = 1;
         $.each(data.Grid.HeaderGroup, function (nGroupIndex1, nGroupObj1) {
-            if (nGroupObj1.GroupTitle == "")
-            {
+            if (nGroupObj1.GroupTitle == "") {
                 //表示没有标题头，则直接加
                 $.each(nGroupObj1.ChildColumnId, function (columnIdIndex, columnIdObj) {
                     var kColumn = CPGridCreateColumn(GetGridColumnByColumnId(columnIdObj), ListDataObj);
                     if (kColumn != null) {
                         kendoGridColumn.push(kColumn);
                     }
-                });                
+                });
             }
             else {
                 //title: "Location",
@@ -959,7 +1070,7 @@ function InitGridAndLoadData()
                 //    }]
                 var kColumnRoot = new Object();
                 kColumnRoot.title = nGroupObj1.GroupTitle;
-                kColumnRoot.columns = new Array();    
+                kColumnRoot.columns = new Array();
                 kColumnRoot.headerAttributes = {
                     class: 'GridHeaderXH',
                     style: "text-align: center;vertical-align:middle"
@@ -968,7 +1079,7 @@ function InitGridAndLoadData()
                     if (childGroupObj.GroupTitle == "") {
                         //表示没有标题头，则直接加
                         $.each(childGroupObj.ChildColumnId, function (columnIdIndex, columnIdObj) {
-                            var kColumn = CPGridCreateColumn(GetGridColumnByColumnId(columnIdObj), ListDataObj);                            
+                            var kColumn = CPGridCreateColumn(GetGridColumnByColumnId(columnIdObj), ListDataObj);
                             if (kColumn != null) {
                                 kColumnRoot.columns.push(kColumn);
                             }
@@ -977,13 +1088,13 @@ function InitGridAndLoadData()
                     else {
                         var kColumnChild = new Object();
                         kColumnChild.title = childGroupObj.GroupTitle;
-                        kColumnChild.columns = new Array();  
+                        kColumnChild.columns = new Array();
                         kColumnChild.headerAttributes = {
                             class: 'GridHeaderXH',
                             style: "text-align: center;vertical-align:middle"
                         };
                         $.each(childGroupObj.ChildColumnId, function (columnIdIndex, columnIdObj) {
-                            var kColumn = CPGridCreateColumn(GetGridColumnByColumnId(columnIdObj), ListDataObj);                           
+                            var kColumn = CPGridCreateColumn(GetGridColumnByColumnId(columnIdObj), ListDataObj);
                             if (kColumn != null) {
                                 kColumnChild.columns.push(kColumn);
                             }
@@ -992,8 +1103,8 @@ function InitGridAndLoadData()
                             kColumnRoot.columns.push(kColumnChild);
                         }
                     }
-                    
-                });  
+
+                });
                 if (nGroupObj1.ChildGroupCol.length > 0) {
                     kendoGridColumn.push(kColumnRoot);
                 }
@@ -1002,6 +1113,20 @@ function InitGridAndLoadData()
         });
         //console.log(kendoGridColumn);
         //绑定列类型end
+
+
+        //author:WAGYY; desc:20180831; desc绑定查询条件
+        if (data.Grid.SearchModel == 2)//为排列式查询方式  
+        {
+            //CPGridCreateQueryColumn(SearchListDataObj);
+            CPGridCreateQueryColumn(CPGridGlobal_SearchListDataObj);
+            //author:WAGYY; date:20180831 desc:当查询条件使用排列式展示形式时，不包含CPGridSearchTxt文本框       
+            $(CPGridGlobal_AllSearchContent).replaceAll($("#CPGridSearchTxt"));
+
+        }
+
+
+
 
         //列表分组相关start
         var groupArray = new Array();
@@ -1026,13 +1151,15 @@ function InitGridAndLoadData()
                     });
                 }
             });
-            
+
         }
         //列表分组相关end
 
         var nHeight = $(window).height() - $("#CPGridSearch").height() - 20;
-        if (CPGrid_IsHasFooter)
-        {
+        if (data.Grid.SearchModel == 2) {
+            nHeight = nHeight - $("#CPGridButton").height();
+        }
+        if (CPGrid_IsHasFooter) {
             nHeight = nHeight - 32;
         }
         var pageSet = {
@@ -1040,18 +1167,16 @@ function InitGridAndLoadData()
             pageSizes: true
         };
         var tmpPageSize = data.Grid.PageSize;
-        if (data.Grid.IsPage == false)
-        {
+        if (data.Grid.IsPage == false) {
             pageSet = false;
             tmpPageSize = 9999999;
         }
-        if (CPGridGlobal_IsExportToExcel == "true")
-        {
+        if (CPGridGlobal_IsExportToExcel == "true") {
             pageSet = false;
             tmpPageSize = Number(CPGridGlobal_ExportToExcelPageSize);
         }
         //创建列表start
-       $("#" + gridId).kendoGrid({
+        $("#" + gridId).kendoGrid({
             dataSource: {
                 type: "json",
                 transport: {
@@ -1059,8 +1184,7 @@ function InitGridAndLoadData()
                 },
                 schema: {
                     data: function (response) {
-                        if (response.Result == false)
-                        {
+                        if (response.Result == false) {
                             alert(response.ErrorMsg);
                             return false;
                         }
@@ -1078,7 +1202,7 @@ function InitGridAndLoadData()
                     }
                 },
                 requestEnd: function (e) {
-                    
+
                     var response = e.response;
                     var type = e.type;
 
@@ -1093,7 +1217,7 @@ function InitGridAndLoadData()
             excel: {
                 fileName: data.Grid.GridTitle + ".xlsx"
             },
-            width:"800px",
+            width: "800px",
             height: nHeight,
             filterable: false,
             sortable: true,//  mode: "multiple"
@@ -1107,7 +1231,6 @@ function InitGridAndLoadData()
             columns: kendoGridColumn,
             change: function (e) {
                 //行选中事件
-               
                 //if (event.button == 0 && event.ctrlKey == false && event.shiftKey == false) {
                 //    //点击左键 并未按住ctrl 和shift键
                 //}
@@ -1119,19 +1242,19 @@ function InitGridAndLoadData()
                         var dataItem = this.dataItem(selectedRows[i]);
                         if ($.inArray(dataItem.ColumnCPGridPK, addedIdCol) == -1) {
                             //不知道为什么在，当列表有编辑列时，同一行会执行两次，所以只好做这个判断了。
-                            addedIdCol.push(dataItem.ColumnCPGridPK);                         
+                            addedIdCol.push(dataItem.ColumnCPGridPK);
                             //选中checkbox
-                            var tmpCHK = document.getElementById("CPGirdDiv_Chk_" + dataItem.ColumnCPGridPK);
-                            if (tmpCHK != undefined
-                                &&
-                                tmpCHK != null) {
-                                if (tmpCHK.checked) {
-                                    tmpCHK.checked = "";
-                                }
-                                else {
-                                    tmpCHK.checked = "checked";
-                                }
-                            }
+                            //var tmpCHK = document.getElementById("CPGirdDiv_Chk_" + dataItem.ColumnCPGridPK);
+                            //if (tmpCHK != undefined
+                            //    &&
+                            //    tmpCHK != null) {
+                            //    //if (tmpCHK.checked) {
+                            //    //    tmpCHK.checked = "";
+                            //    //}
+                            //    //else {
+                            //    //    tmpCHK.checked = "checked";
+                            //    //}
+                            //}
                         }
                     }
                 }
@@ -1139,17 +1262,22 @@ function InitGridAndLoadData()
             excelExport: function (e) {
                 parent.CloseNewModel();
             },
-            dataBound: function (e) {               
-                if (CPGridGlobal_IsExportToExcel == "true")
-                {
-                     var grid = $("#CPGirdDiv").data("kendoGrid");
-                     grid.saveAsExcel();
-                    
+            dataBound: function (e) {
+                if (CPGridGlobal_IsExportToExcel == "true") {
+                    var grid = $("#CPGirdDiv").data("kendoGrid");
+                    grid.saveAsExcel();
+
                 }
                 else {
                     SetHtmlShowOrHideWhenLoad();
                     SetGridHeightAndWidth();
                     SetGridEditTimeSelectControl();
+                }
+
+                //加载扩展脚本 WANGYY-desc:列表加载完成后，再加载脚本；二次脚本中方法多为更改列表某些控件内容信息
+                if (CPGridGlobal_GridObj.JsEx != null && CPGridGlobal_GridObj.JsEx != "") {
+                    // document.write(CPFormGlobal_FormObj.Config.UseSceneCol[0].FormScript)
+                    $("#divCPGridJSContainer").html(CPGridGlobal_GridObj.JsEx);
                 }
             },
             navigate: function (e) {
@@ -1169,6 +1297,10 @@ function InitGridAndLoadData()
         });
         //创建列表end
 
+
+
+
+
     });
 }
 //初始化列表end
@@ -1187,7 +1319,7 @@ $(function () {
             CPGridSearch();
         }
     });
-    InitGridAndLoadData()
+    InitGridAndLoadData();
 });
 
 /**
@@ -1198,15 +1330,90 @@ function SearchTextOnClick(obj) {
     $(obj).attr("placeholder", "");
     if (event.keyCode == 13) {
         CPGridSearch();
-    }  
+    }
 }
 /*
  *查询方法 start
  */
-function SetGridSearchCondition()
-{
+function SetGridSearchCondition() {
     CPGridGlobal_OtherCondition = "";
+
+    //author:WAGYY
+    //date:20180831
+    //desc:排列式查询组织查询语句  
     var sValue = CPTrim($("#CPGridSearchTxt").val());
+    if ($("#CPGridSearchTxt").length > 0 && sValue == "") return;
+
+    $.each(CPGridGlobal_AllSearchField, function (nIndex, nObj) {
+        var arith = " OR ";
+        if ($("#CPGridSearchTxt").length == 0) { sValue = $("#CPGridQueryControl_" + nObj).val(); arith = " AND "; }
+        if ($("#CPGridQueryControl_" + nObj).get(0).tagName == "SELECT" && sValue == "0") return true;//下拉框查询。默认为“请选择”不作为查询条件
+        if ($("#CPGridQueryControl_" + nObj).get(0).tagName == "INPUT" && $("#CPGridQueryControl_" + nObj).get(0).hasAttribute("data-timeformat")) {
+            //时间框查询。
+            var datemode = $("#SearchMode_" + nObj);
+            sValue = $("#CPGridQueryControl_" + nObj).val();
+            switch (datemode.val()) {
+                case "1":
+                    if (sValue != "") sValue = " (" + nObj + " = '" + sValue + "') ";
+                    break;
+                case "2":
+                    if (sValue != "") sValue = " (" + nObj + " > '" + sValue + "') ";
+                    break;
+                case "3":
+                    if (sValue != "") sValue = " (" + nObj + " < '" + sValue + "') ";
+                    break;
+                case "4":
+                    if (sValue != "") sValue = " (" + nObj + " >= '" + sValue + "') ";
+                    break;
+                case "5":
+                    if (sValue != "") sValue = " (" + nObj + " <= '" + sValue + "') ";
+                    break;
+                case "6":
+                    var sEnd = $("#CPGridQueryControl_" + nObj + '_2').val();
+                    if (sEnd == "") {
+                        if (sValue != "") {
+                            sEnd = getNowFormatDate();
+                        }
+                        else
+                            return;
+                    }
+                    if (sValue == "") sValue = '1999-01-01';
+                    sValue = nObj + "  between ' " + sValue + " ' and  '" + sEnd + "'";
+                    break;
+
+            }
+            if (sValue == "") return true;
+        }
+        else {
+            if (sValue == "") return true;
+            sValue = " (" + nObj + " like '@" + sValue + "@') ";
+        }
+        if (CPGridGlobal_OtherCondition == "")
+            CPGridGlobal_OtherCondition = sValue;
+        else
+            CPGridGlobal_OtherCondition += arith + sValue;
+
+    });
+
+    //获取当前时间，格式YYYY-MM-DD
+    function getNowFormatDate() {
+        var date = new Date();
+        var seperator1 = "-";
+        var year = date.getFullYear();
+        var month = date.getMonth() + 1;
+        var strDate = date.getDate();
+        if (month >= 1 && month <= 9) {
+            month = "0" + month;
+        }
+        if (strDate >= 0 && strDate <= 9) {
+            strDate = "0" + strDate;
+        }
+        var currentdate = year + seperator1 + month + seperator1 + strDate;
+        return currentdate;
+    }
+
+    /*
+     var sValue = CPTrim($("#CPGridSearchTxt").val());
     if (sValue == "") {
         CPGridGlobal_OtherCondition = "";
     }
@@ -1218,9 +1425,9 @@ function SetGridSearchCondition()
                 CPGridGlobal_OtherCondition += " OR  (" + nObj + " like '@" + sValue + "@') ";
         });
     }
+     */
 }
-function CPGridSearch()
-{
+function CPGridSearch() {
     var grid = $("#CPGirdDiv").data("kendoGrid");
     grid.destroy();
     $("#CPGirdDiv").html("");
@@ -1237,21 +1444,20 @@ function GridChkAllClick(obj) {
         $.each($(".CPGridChkCss"), function (nIndex, nObj) {
             document.getElementById($(nObj).attr("id")).checked = "checked";
         });
-        
+
     }
     else {
         $.each($(".CPGridChkCss"), function (nIndex, nObj) {
             document.getElementById($(nObj).attr("id")).checked = "";
         });
     }
-   
+
 }
 function GridChkItemClick(obj) {
-   
+
 }
 //内置修改方法
-function CPGridGetSelDataWhenUpdate()
-{ 
+function CPGridGetSelDataWhenUpdate() {
     var Items = new Array();
     $.each($(".CPGridChkCss"), function (nIndex, nObj) {
         if ($(nObj).is(':checked')) {
@@ -1273,12 +1479,10 @@ function CPGridGetSelDataWhenUpdate()
     });
     return Items;
 }
-function CPGridUpdateData()
-{
+function CPGridUpdateData() {
     var inputObj = new Object();
     inputObj.Items = CPGridGetSelDataWhenUpdate();
-    if (inputObj.Items.length <= 0)
-    {
+    if (inputObj.Items.length <= 0) {
         alert("请选择要修改的数据！");
         return false;
     }
@@ -1286,12 +1490,12 @@ function CPGridUpdateData()
     inputObj.CurUserId = CPCurUserId;
     inputObj.CurUserIden = CPCurUserIden;
     var updateUrl = CPWebRootPath + "/api/GridEngine/UpdateGridData";
-  
+
     $.ajax({
         type: "POST",
         url: updateUrl,
-        data: JSON.stringify(inputObj),  
-       contentType: 'application/json',  
+        data: JSON.stringify(inputObj),
+        contentType: 'application/json',
         success: function (data) {
             if (data.Result == false) {
                 alert("修改失败，详细信息：" + data.ErrorMsg);
@@ -1305,8 +1509,7 @@ function CPGridUpdateData()
     });
 }
 //列表内置删除方法
-function CPGridRowInnerDelete(dataPK)
-{
+function CPGridRowInnerDelete(dataPK) {
     if (confirm("确实要删除选中的数据吗？")) {
         var Url = CPWebRootPath + "/api/GridEngine/DeleteGridData?GridCode=" + CPGridGlobal_GridCode + "&CurUserId=" + CPCurUserId + "&CurUserIden=" + CPCurUserIden;
         Url += "&DataPks=" + dataPK;
@@ -1336,16 +1539,13 @@ function CPGridRowInnerDelete(dataPK)
     }
 }
 //删除列表选中数据
-function CPGridDeleteData()
-{
+function CPGridDeleteData() {
     var sValue = CPGridGetSelChkData();
-    if (sValue == "")
-    {
+    if (sValue == "") {
         alert("请选择要删除的数据！");
         return false;
     }
-    if (confirm("确实要删除选中的数据吗？"))
-    {
+    if (confirm("确实要删除选中的数据吗？")) {
         var Url = CPWebRootPath + "/api/GridEngine/DeleteGridData?GridCode=" + CPGridGlobal_GridCode + "&CurUserId=" + CPCurUserId + "&CurUserIden=" + CPCurUserIden;
         Url += "&DataPks=" + sValue;
         //为了表达式，需要把URL里其它字段再加上
@@ -1372,7 +1572,7 @@ function CPGridDeleteData()
             }
         });
     }
-    
+
 }
 //选择表达式
 //nType: 0通用表达式  1列表  2表单   3树 4流程
@@ -1403,15 +1603,108 @@ function SelectExpression(thisObj, nType) {
     }
 }
 //修改配置
-function CPGridUpdateConfig(gridId)
-{
+function CPGridUpdateConfig(gridId) {
     var url = "/Plat/Tab/TabView?TabCode=Tab0001&DeviceType=1&SysId=1&TargetGridId=" + gridId;
     try {
         top.OpenNewModel(url, "修改配置", 9000, 9000);
     }
-    catch (e)
-    {
+    catch (e) {
         OpenNewModel(url, "修改配置", 9000, 9000);
     }
 }
- 
+
+CustomFun_OnClickKeyField = function (obj) { return true; };
+
+CustomFun_MergeGridRows = function (gridId, colTitle) {
+
+    $('#' + gridId + '>.k-grid-content>table').each(function (index, item) {
+
+        var dimension_col = 1;
+        // First, scan first row of headers for the "Dimensions" column.
+        $('#' + gridId + '>.k-grid-header>.k-grid-header-wrap>table').find('th').each(function () {
+            if ($(this).text() == colTitle) {
+
+                // first_instance holds the first instance of identical td
+                var first_instance = null;
+
+                $(item).find('tr').each(function () {
+
+                    // find the td of the correct column (determined by the colTitle)
+                    var dimension_td = $(this).find('td:nth-child(' + dimension_col + ')');
+
+                    if (first_instance == null) {
+                        first_instance = dimension_td;
+                    } else if (dimension_td.text() == first_instance.text()) {
+                        // if current td is identical to the previous
+                        // then remove the current td
+                        dimension_td.remove();
+                        // increment the rowspan attribute of the first instance
+                        first_instance.attr('rowspan', typeof first_instance.attr('rowspan') == "undefined" ? 2 : Number(first_instance.attr('rowspan')) + 1);
+                    } else {
+                        // this cell is different from the last
+                        first_instance = dimension_td;
+                    }
+                });
+                return;
+            }
+            dimension_col++;
+        });
+
+    });
+};
+//ColArray 格式 [{name:"col1",index:0,CurObj:{}},{name:"col2",index:2,CurObj:{}},]
+CustomFun_MergeGridRowsForMulCol = function (gridId, colTitle, ColArray) {
+
+    $('#' + gridId + '>.k-grid-content>table').each(function (index, item) {
+
+        var dimension_col = 1;
+        // First, scan first row of headers for the "Dimensions" column.
+        $('#' + gridId + '>.k-grid-header>.k-grid-header-wrap>table').find('th').each(function () {
+            if ($(this).text() == colTitle) {
+
+                // first_instance holds the first instance of identical td
+                var first_instance = null;
+
+                $(item).find('tr').each(function () {
+
+                    // find the td of the correct column (determined by the colTitle)
+                    var dimension_td = $(this).find('td:nth-child(' + dimension_col + ')');
+                    var tr = $(this);
+                    if (first_instance == null) {
+                        first_instance = dimension_td;
+                        $(ColArray).each(function (index, item) {
+                            item.CurObj = tr.find('td:nth-child(' + item.index + ')');
+                        });
+                    } else if (dimension_td.text() == first_instance.text()) {
+                        // if current td is identical to the previous
+                        // then remove the current td
+
+                        var curobj = new Array();
+                        //先获取DOM对象，再统一移除，解决直接移除DOMIndex变化 的问题
+                        $(ColArray).each(function (index, item) {
+                            curobj.push(tr.find('td:nth-child(' + item.index + ')'));
+                        });
+                        $(curobj).each(function (index, item) {
+                            item.remove();
+                        });
+                        dimension_td.remove();
+                        // increment the rowspan attribute of the first instance
+                        first_instance.attr('rowspan', typeof first_instance.attr('rowspan') == "undefined" ? 2 : Number(first_instance.attr('rowspan')) + 1);
+                        $(ColArray).each(function (index, item) {
+                            item.CurObj.attr('rowspan', typeof item.CurObj.attr('rowspan') == "undefined" ? 2 : Number(item.CurObj.attr('rowspan')) + 1);
+                        });
+                    } else {
+                        // this cell is different from the last
+                        first_instance = dimension_td;
+                        $(ColArray).each(function (index, item) {
+                            item.CurObj = tr.find('td:nth-child(' + item.index + ')');
+                        });
+                    }
+                });
+                return;
+            }
+            dimension_col++;
+        });
+
+    });
+};

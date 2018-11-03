@@ -16,7 +16,7 @@ namespace CPFrameWork.Organ
     {
 
         #region 登录方法
-        public class LoginReturn:CPWebApiBaseReturnEntity
+        public class LoginReturn : CPWebApiBaseReturnEntity
         {
             public System.Guid UserKey { get; set; }
             public int UserId { get; set; }
@@ -45,6 +45,7 @@ namespace CPFrameWork.Organ
             {
                 re.Result = false;
                 re.ErrorMsg = ex.Message.ToString();
+                System.Diagnostics.Debug.WriteLine(ex.StackTrace);
                 return re;
             }
 
@@ -53,7 +54,7 @@ namespace CPFrameWork.Organ
         #endregion
 
         #region  获取所有部门，为组织机构选择用
-        public class GetAllDepReturn:CPWebApiBaseReturnEntity
+        public class GetAllDepReturn : CPWebApiBaseReturnEntity
         {
             public List<CODepOrganSel> DepCol { get; set; }
         }
@@ -64,10 +65,11 @@ namespace CPFrameWork.Organ
             public bool HasChildDep { get; set; }
             public List<CODepOrganSel> ChildDep { get; set; }
         }
-        public List<CODepOrganSel> GetChildDep(List<CODep> allDep,int parentDepId)
+        public List<CODepOrganSel> GetChildDep(List<CODep> allDep, int parentDepId)
         {
             List<CODepOrganSel> col = new List<CODepOrganSel>();
-            allDep.Where(t => t.ParentId.Equals(parentDepId)).ToList().ForEach(t => {
+            allDep.Where(t => t.ParentId.Equals(parentDepId)).ToList().ForEach(t =>
+            {
                 CODepOrganSel item = new CODepOrganSel();
                 item.Id = t.Id;
                 item.DepName = t.DepName;
@@ -80,9 +82,9 @@ namespace CPFrameWork.Organ
             });
             return col;
         }
-        public GetAllDepReturn GetAllDep( int CurUserId, string CurUserIden)
+        public GetAllDepReturn GetAllDep(int CurUserId, string CurUserIden)
         {
-            base.SetHeader(); 
+            base.SetHeader();
             CurUserIden = CPAppContext.FormatSqlPara(CurUserIden);
             GetAllDepReturn re = new GetAllDepReturn();
             if (this.CheckUserIden(CurUserId, CurUserIden) == false)
@@ -156,7 +158,7 @@ namespace CPFrameWork.Organ
         {
             public List<COUser> UserCol { get; set; }
         }
-        public GetUserByDepReturn GetUserByDep(int DepId,int CurUserId, string CurUserIden)
+        public GetUserByDepReturn GetUserByDep(int DepId, int CurUserId, string CurUserIden)
         {
             base.SetHeader();
             CurUserIden = CPAppContext.FormatSqlPara(CurUserIden);
@@ -228,9 +230,9 @@ namespace CPFrameWork.Organ
             public int CurUserId { get; set; }
         }
         [HttpPost]
-        public GetUserInfoReturn GetUserInfo([FromBody] GetUserInfoInput input )
+        public GetUserInfoReturn GetUserInfo([FromBody] GetUserInfoInput input)
         {
-            base.SetHeader(); 
+            base.SetHeader();
             GetUserInfoReturn re = new GetUserInfoReturn();
             if (this.CheckUserIden(input.CurUserId, input.CurUserIden) == false)
             {
@@ -257,7 +259,7 @@ namespace CPFrameWork.Organ
 
         #region 设置部门为假删除状态
         [HttpGet]
-        public CPWebApiBaseReturnEntity SetDepDeleteState(int DepId,int CurUserId, string CurUserIden)
+        public CPWebApiBaseReturnEntity SetDepDeleteState(int DepId, int CurUserId, string CurUserIden)
         {
             base.SetHeader();
             CPWebApiBaseReturnEntity re = new CPWebApiBaseReturnEntity();
@@ -283,7 +285,7 @@ namespace CPFrameWork.Organ
 
         #region 修改密码
         [HttpGet]
-        public CPWebApiBaseReturnEntity UpdateUserPwd(string OldPwd,string NewPwd)
+        public CPWebApiBaseReturnEntity UpdateUserPwd(string OldPwd, string NewPwd)
         {
             base.SetHeader();
             CPWebApiBaseReturnEntity re = new CPWebApiBaseReturnEntity();
@@ -317,7 +319,7 @@ namespace CPFrameWork.Organ
         {
             public List<COUser> UserCol { get; set; }
         }
-        public GetUserByMyDepReturn GetUserByMyDep( int CurUserId, string CurUserIden)
+        public GetUserByMyDepReturn GetUserByMyDep(int CurUserId, string CurUserIden)
         {
             base.SetHeader();
             CurUserIden = CPAppContext.FormatSqlPara(CurUserIden);

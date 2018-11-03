@@ -4,28 +4,48 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
-using System.Linq; 
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace CPFrameWork.Global
 {
-   public   class CPAutoNumHelper
+    public class CPAutoNumHelper
     {
         #region 实例 
         /// <summary>
         /// 获取节点对象服务类
         /// </summary>
         /// <returns></returns>
-        public static void StartupInit( IServiceCollection services, IConfigurationRoot Configuration)
+        public static void StartupInit(IServiceCollection services, IConfigurationRoot Configuration)
         {
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(new EFLoggerProvider());
             // Add framework services.
-            services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
-                options.UseSqlServer(Configuration.GetConnectionString("CPCommonIns")));
+            switch (CPAppContext.CurDbType())
+            {
+                case DbHelper.DbTypeEnum.SqlServer:
+                    services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
+                       options.UseSqlServer(Configuration.GetConnectionString("CPCommonIns")).UseLoggerFactory(loggerFactory));
+                    break;
+                case DbHelper.DbTypeEnum.MySql:
+                    services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
+                       options.UseMySql(Configuration.GetConnectionString("CPCommonIns")).UseLoggerFactory(loggerFactory));
+                    break;
+                //case DbHelper.DbTypeEnum.Oracle:
+                //    services.AddDbContext<CPFrameDbContext>(options =>//手工高亮
+                //       options.UseSqlServer(Configuration.GetConnectionString("CPFrameIns")).UseLoggerFactory(loggerFactory));
+                //    break;
+                default:
+                    services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
+                      options.UseSqlServer(Configuration.GetConnectionString("CPCommonIns")).UseLoggerFactory(loggerFactory));
+                    break;
+            }
             services.TryAddTransient<ICPCommonDbContext, CPCommonDbContext>();
             services.TryAddTransient<BaseCPAutoNumRep, CPAutoNumRep>();
             services.TryAddTransient<CPAutoNumHelper, CPAutoNumHelper>();
@@ -53,7 +73,7 @@ namespace CPFrameWork.Global
             else
                 return null;
         }
-        public string GetNextAutoNum(string autoCode,out int autoIndex)
+        public string GetNextAutoNum(string autoCode, out int autoIndex)
         {
             autoIndex = 0;
             CPAutoNum auto = this.GetAutoNum(autoCode);
@@ -62,9 +82,15 @@ namespace CPFrameWork.Global
             string s = auto.AutoTemplate;
             if (s == null)
                 throw new Exception("没有找到编号为【" + autoCode + "】的自动编号，或者此自动编号的编号模板为空！");
-            if (s.IndexOf("{@AutoNum@}",StringComparison.CurrentCultureIgnoreCase) != -1)
+            string CurData = CPExpressionHelper.Instance.RunCompile(s.Replace("{@AutoNum@}", ""));
+            if (s.IndexOf("{@AutoNum@}", StringComparison.CurrentCultureIgnoreCase) != -1)
             {
-                autoIndex = this._CPAutoNumRep.GetMaxAutoIndex(auto);
+
+                if (CurData.Equals(auto.Curdata))
+                {
+
+                    autoIndex =Convert.ToInt32(auto.CurIndex);
+                }
                 autoIndex++;
                 string sIntValue = autoIndex.ToString().Trim();
                 int nLength = sIntValue.Length;
@@ -74,7 +100,11 @@ namespace CPFrameWork.Global
                 }
                 s = s.Replace("{@AutoNum@}", sIntValue);
             }
+            auto.Curdata = CurData;
+            auto.CurIndex = autoIndex;
+            this._CPAutoNumRep.Update(auto);
             s = CPExpressionHelper.Instance.RunCompile(s);
+
             return s;
         }
 
@@ -128,7 +158,7 @@ namespace CPFrameWork.Global
     }
 
 
-    public class CPAutoNum:BaseEntity
+    public class CPAutoNum : BaseEntity
     {
 
         /// <summary>
@@ -192,6 +222,16 @@ namespace CPFrameWork.Global
         /// 表单查找最大流水号是其他过滤条件，即sql语句里where后面的过滤条件
         /// </summary>
         public string FormDataSearch { get; set; }
+        /// <summary>
+        /// add by zzh 20180929
+        /// 记录当前表达式信息
+        /// </summary>
+        public string Curdata { get; set; }
+        /// <summary>
+        /// add by zzh 20180929
+        /// 记录当前 最新序号信息
+        /// </summary>
+        public Int64? CurIndex { get; set; }
         public override void FormatInitValue()
         {
             base.FormatInitValue();
@@ -203,7 +243,7 @@ namespace CPFrameWork.Global
                 this.FormAutoYearSplit = false;
         }
     }
-    
+
 
     public abstract class BaseCPAutoNumRep : BaseRepository<CPAutoNum>
     {
@@ -215,7 +255,7 @@ namespace CPFrameWork.Global
         public abstract DataSet GetConfig(List<int> idCol);
         public abstract bool SyncConfigFromDataSet(int targetSysId, DataSet ds, bool isCreateNew);
     }
-    public class CPAutoNumRep: BaseCPAutoNumRep
+    public class CPAutoNumRep : BaseCPAutoNumRep
     {
         public CPAutoNumRep(ICPCommonDbContext dbContext) : base(dbContext)
         {
@@ -266,7 +306,7 @@ namespace CPFrameWork.Global
                     dr["AutoCode"] = dr["AutoCode"].ToString() + "_副本";
                 }
                 string insertSql = CPAppContext.GetInsertSql("CP_AutoNum", dsStruct.Tables["CP_AutoNum"].Columns, dr);
-             
+
                 SqlCommand cmdInsert = new SqlCommand(insertSql, _helper.GetConnection() as SqlConnection);
                 foreach (DataColumn dc in dsStruct.Tables["CP_AutoNum"].Columns)
                 {
@@ -294,7 +334,8 @@ namespace CPFrameWork.Global
         public override DataSet GetConfig(List<int> gridIdCol)
         {
             string ids = "";
-            gridIdCol.ForEach(t => {
+            gridIdCol.ForEach(t =>
+            {
                 if (string.IsNullOrEmpty(ids))
                     ids = t.ToString();
                 else
@@ -323,9 +364,29 @@ namespace CPFrameWork.Global
                     if (string.IsNullOrEmpty(auto.FormDataSearch) == false)
                         strSql += "  WHERE (" + CPExpressionHelper.Instance.RunCompile(auto.FormDataSearch) + " ) ";
                 }
-                int NextAutoNum = Convert.ToInt32(_db.ExecuteScalar( strSql));
+                int NextAutoNum = Convert.ToInt32(_db.ExecuteScalar(strSql));
                 return NextAutoNum;
             }
+            else if (CPAppContext.CurDbType() == DbHelper.DbTypeEnum.MySql)
+
+
+            {
+                string strSql = @"SELECT IFNULL(MAX(" + auto.FormAumField + @"),0)   FROM " + auto.FormTableName;
+                if (auto.FormAutoYearSplit.Value)
+                {
+                    strSql += " WHERE " + auto.FormYearField + "=" + DateTime.Now.Year;
+                    if (string.IsNullOrEmpty(auto.FormDataSearch) == false)
+                        strSql += "  AND (" + CPExpressionHelper.Instance.RunCompile(auto.FormDataSearch) + " ) ";
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(auto.FormDataSearch) == false)
+                        strSql += "  WHERE (" + CPExpressionHelper.Instance.RunCompile(auto.FormDataSearch) + " ) ";
+                }
+                int NextAutoNum = Convert.ToInt32(_db.ExecuteScalar(strSql));
+                return NextAutoNum;
+            }
+
             else
             {
                 throw new Exception("未实现");

@@ -1,25 +1,27 @@
 using System;
 using System.Data;
-using System.Diagnostics; 
+using System.Diagnostics;
 using System.Data.Common;
 using System.Data.SqlClient;
 using System.Collections;
+using MySql.Data.MySqlClient;
 using Microsoft.Extensions.Configuration;
 
 namespace CPFrameWork.Utility.DbOper
 {
-   public class DbHelper
+    public class DbHelper
     {
-        public  enum DbTypeEnum
+        public enum DbTypeEnum
         {
             SqlServer = 1,
-            Oracle =2
+            Oracle = 2,
+            MySql = 3
         }
 
         #region  属性变量      
         public string ConntionString
         {
-            get;set;
+            get; set;
         }
         //数据访问基础类--构造函数  
         public DbHelper(string dbIns, DbTypeEnum dbType)
@@ -29,28 +31,30 @@ namespace CPFrameWork.Utility.DbOper
             //this.ConntionString = Configuration.GetConnectionString(dbIns);
             this.ConntionString = CPUtils.Configuration.GetSection("ConnectionStrings")[dbIns];
             this.DbType = dbType;
-            
-            
-        } 
+
+
+        }
         /// <summary>  
         /// 数据库类型   
         /// </summary>   
         public DbTypeEnum DbType
         {
-            get;set;
+            get; set;
         }
         #endregion
 
-       
+
         #region 转换参数  
         private System.Data.IDbDataParameter iDbPara(string ParaName, string DataType)
         {
             switch (this.DbType)
             {
-                case  DbTypeEnum.SqlServer:
+                case DbTypeEnum.SqlServer:
                     return GetSqlPara(ParaName, DataType);
                 //case  DbTypeEnum.Oracle:
                 //    return GetOleDbPara(ParaName, DataType); 
+                case DbTypeEnum.MySql:
+                    return GetMySqlPara(ParaName, DataType);
                 default:
                     return GetSqlPara(ParaName, DataType);
             }
@@ -74,6 +78,26 @@ namespace CPFrameWork.Utility.DbOper
                     return new SqlParameter(ParaName, SqlDbType.NText);
                 default:
                     return new SqlParameter(ParaName, SqlDbType.VarChar);
+            }
+        }
+        private MySqlParameter GetMySqlPara(string ParaName, string DataType)
+        {
+            switch (DataType)
+            {
+                case "Decimal":
+                    return new MySqlParameter(ParaName, SqlDbType.Decimal);
+                case "Varchar":
+                    return new MySqlParameter(ParaName, SqlDbType.VarChar);
+                case "DateTime":
+                    return new MySqlParameter(ParaName, SqlDbType.DateTime);
+                case "Iamge":
+                    return new MySqlParameter(ParaName, SqlDbType.Image);
+                case "Int":
+                    return new MySqlParameter(ParaName, SqlDbType.Int);
+                case "Text":
+                    return new MySqlParameter(ParaName, SqlDbType.NText);
+                default:
+                    return new MySqlParameter(ParaName, SqlDbType.VarChar);
             }
         }
         //private OracleParameter GetOraclePara(string ParaName, string DataType)
@@ -123,10 +147,12 @@ namespace CPFrameWork.Utility.DbOper
         {
             switch (this.DbType)
             {
-                case   DbTypeEnum.SqlServer:
+                case DbTypeEnum.SqlServer:
                     return new SqlConnection(this.ConntionString);
                 //case  DbTypeEnum.Oracle:
                 //    return new OracleConnection(this.ConntionString); 
+                case DbTypeEnum.MySql:
+                    return new MySqlConnection(this.ConntionString);
                 default:
                     return new SqlConnection(this.ConntionString);
             }
@@ -139,6 +165,8 @@ namespace CPFrameWork.Utility.DbOper
                     return new SqlCommand(Sql, (SqlConnection)iConn);
                 //case "Oracle":
                 //    return new OracleCommand(Sql, (OracleConnection)iConn); 
+                case DbTypeEnum.MySql:
+                    return new MySqlCommand(Sql, (MySqlConnection)iConn);
                 default:
                     return new SqlCommand(Sql, (SqlConnection)iConn);
             }
@@ -151,6 +179,8 @@ namespace CPFrameWork.Utility.DbOper
                     return new SqlCommand();
                 //case "Oracle":
                 //    return new OracleCommand(); 
+                case DbTypeEnum.MySql:
+                    return new MySqlCommand();
                 default:
                     return new SqlCommand();
             }
@@ -163,6 +193,8 @@ namespace CPFrameWork.Utility.DbOper
                     return new SqlDataAdapter(Sql, (SqlConnection)iConn);
                 //case "Oracle":
                 //    return new OracleDataAdapter(Sql, (OracleConnection)iConn); 
+                case DbTypeEnum.MySql:
+                    return new MySqlDataAdapter(Sql, (MySqlConnection)iConn);
                 default:
                     return new SqlDataAdapter(Sql, (SqlConnection)iConn); ;
             }
@@ -175,6 +207,8 @@ namespace CPFrameWork.Utility.DbOper
                     return new SqlDataAdapter(cmd as SqlCommand);
                 //case "Oracle":
                 //    return new OracleDataAdapter(Sql, (OracleConnection)iConn); 
+                case DbTypeEnum.MySql:
+                    return new MySqlDataAdapter(cmd as MySqlCommand);
                 default:
                     return new SqlDataAdapter(cmd as SqlCommand);
             }
@@ -187,6 +221,8 @@ namespace CPFrameWork.Utility.DbOper
                     return new SqlDataAdapter();
                 //case "Oracle":
                 //    return new OracleDataAdapter(); 
+                case DbTypeEnum.MySql:
+                    return new MySqlDataAdapter();
                 default:
                     return new SqlDataAdapter();
             }
@@ -198,7 +234,9 @@ namespace CPFrameWork.Utility.DbOper
                 case DbTypeEnum.SqlServer:
                     return new SqlDataAdapter((SqlCommand)iCmd);
                 //case "Oracle":
-                //    return new OracleDataAdapter((OracleCommand)iCmd); 
+                //    return new OracleDataAdapter((OracleCommand)iCmd);
+                case DbTypeEnum.MySql:
+                    return new MySqlDataAdapter((MySqlCommand)iCmd);
                 default:
                     return new SqlDataAdapter((SqlCommand)iCmd);
             }
@@ -444,7 +482,7 @@ namespace CPFrameWork.Utility.DbOper
                 }
             }
         }
-       
+
         /// <summary>  
         /// 执行查询语句，返回DataSet  
         /// </summary>  
@@ -495,7 +533,7 @@ namespace CPFrameWork.Utility.DbOper
                     try
                     {
                         IDataAdapter iAdapter = this.GetAdapater(sqlString, iConn);
-                        
+
                         ((SqlDataAdapter)iAdapter).Fill(dataSet, tableName);
                         return dataSet;
                     }
@@ -781,7 +819,7 @@ namespace CPFrameWork.Utility.DbOper
                 {
                     try
                     {
-                        PrepareCommand(out iCmd, iConn, null, strSQL,null);
+                        PrepareCommand(out iCmd, iConn, null, strSQL, null);
                         System.Data.IDataReader iReader = iCmd.ExecuteReader();
                         iCmd.Parameters.Clear();
                         return iReader;
@@ -797,8 +835,8 @@ namespace CPFrameWork.Utility.DbOper
                     }
                     finally
                     {
-                      
-                        
+
+
                     }
                 }
             }
@@ -832,7 +870,7 @@ namespace CPFrameWork.Utility.DbOper
                     }
                     finally
                     {
-                      
+
                     }
                 }
             }
@@ -1057,7 +1095,7 @@ namespace CPFrameWork.Utility.DbOper
             }
             return (SqlCommand)iCmd;
         }
- 
+
         #endregion
     }
 }

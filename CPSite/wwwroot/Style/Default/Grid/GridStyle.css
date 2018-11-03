@@ -83,18 +83,46 @@ body {
     font-family: "microsoft yahei";
     padding-left:1px;
 }
-.CPGridEditListCss {
-    width: 95%;
-    height: 26px;
-}
-/*.CPGridChkCss {
-    cursor: pointer;
-}*/
+    .CPGridEditListCss {
+        width: 95%;
+        height: 26px;
+    }
+    .CPGridChkCss {
+        cursor: pointer;
+    }
+
+
 .CPGridChkCss {
-    display: none;
+    /*display: none;*/
+    /*background-color: #fafafa;
+    border: 1px solid #cacece;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05), inset 0px -15px 10px -12px rgba(0,0,0,0.05);
+    padding: 9px;
+    border-radius: 3px;
+    display: inline-block;
+    position: relative;
+    vertical-align: middle;*/
+    cursor: pointer;
+    -webkit-appearance: none; /*清除复选框默认样式*/
+    background: #fff url(image/blue.png); /*复选框的背景图，就是上图*/
+    height: 22px; /*高度*/
+    vertical-align: middle;
+    width: 22px;
+    border-radius: 5px;
 }
 
-    .CPGridChkCss + label {
+    .CPGridChkCss:active, .CPGridChkCss:checked + label:active {
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05), inset 0px 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .CPGridChkCss:checked {
+        background-color: #e9ecee;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05), inset 0px -15px 10px -12px rgba(0,0,0,0.05), inset 15px 10px -12px rgba(255,255,255,0.1);
+        color: #99a1a7;
+        background-position: -23px 0;
+    }
+
+    /*.CPGridChkCss + label {
         background-color: #fafafa;
         border: 1px solid #cacece;
         box-shadow: 0 1px 2px rgba(0,0,0,0.05), inset 0px -15px 10px -12px rgba(0,0,0,0.05);
@@ -106,31 +134,34 @@ body {
         cursor:pointer;
     }
 
-        .CPGridChkCss + label:active, .CPGridChkCss:checked + label:active {
+     .CPGridChkCss + label:active, .CPGridChkCss:checked + label:active {
             box-shadow: 0 1px 2px rgba(0,0,0,0.05), inset 0px 1px 3px rgba(0,0,0,0.1);
         }
 
-    .CPGridChkCss:checked + label {
+   .CPGridChkCss:checked + label {
         background-color: #e9ecee;
         border: 1px solid #adb8c0;
         box-shadow: 0 1px 2px rgba(0,0,0,0.05), inset 0px -15px 10px -12px rgba(0,0,0,0.05), inset 15px 10px -12px rgba(255,255,255,0.1);
         color: #99a1a7;
     }
 
-        .CPGridChkCss:checked + label:after {
-            content: '\2714';
-            font-size: 14px;
-            position: absolute;
-            top: 0px;
-            left: 3px;
-            color: #99a1a7;
-        }
+    .CPGridChkCss:checked + label:after {
+        content: '\2714';
+        font-size: 14px;
+        position: absolute;
+        top: 0px;
+        left: 3px;
+        color: #99a1a7;
+    }*/
 
-.CPGridChkCssAll {
-    display: none;
-}
+  
 
-    .CPGridChkCssAll + label {
+
+    /*.CPGridChkCssAll {
+        display: none;
+    }*/
+
+/* .CPGridChkCssAll + label {
         background-color: #fafafa;
         border: 1px solid #cacece;
         box-shadow: 0 1px 2px rgba(0,0,0,0.05), inset 0px -15px 10px -12px rgba(0,0,0,0.05);
@@ -160,8 +191,28 @@ body {
             top: 0px;
             left: 3px;
             color: #99a1a7;
-        }
+        }*/
 
+.CPGridChkCssAll {
+    cursor: pointer;
+    -webkit-appearance: none; /*清除复选框默认样式*/
+    background: #fff url(image/blue.png); /*复选框的背景图，就是上图*/
+    height: 22px; /*高度*/
+    vertical-align: middle;
+    width: 22px;
+    border-radius: 5px;
+}
+
+    .CPGridChkCssAll:active, .CPGridChkCss:checked + label:active {
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05), inset 0px 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .CPGridChkCssAll:checked {
+        background-color: #e9ecee;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05), inset 0px -15px 10px -12px rgba(0,0,0,0.05), inset 15px 10px -12px rgba(255,255,255,0.1);
+        color: #99a1a7;
+        background-position: -23px 0;
+    }       
 
 
 
@@ -214,7 +265,56 @@ body {
     /*color: #000;
     background-color: #f5f5f5;
     border-color: #f5f5f5;
-}*/
+}
  .k-state-selected > td > a {
     color: #fff;
+}
+
+ /*
+     author:wyy
+     date:2018-08-31
+     desc:新增样式关于查询框样式“排列式”
+ */
+.SearchArrayTextBoxCss {
+    padding-left: 10px;
+    border: 1px solid #e3e3e3;
+    height: 22px;
+    width: 155px;
+}
+.SearchCPGridEditListCss {
+    /*width: auto;*/
+    width: 167px;
+    height: 26px;
+}
+
+.SearchCPGridEditTextBoxCss {
+    height: 22px;
+    width: 100px;
+    font-size: 14px;
+    border: 1px solid #bfbfca !important;
+    outline: none;
+    font-family: "microsoft yahei";
+    /*padding-left: 1px;*/
+}
+.SearchCPGridDateTextBoxSearchModeCss {
+    padding-right: 5px;
+    width: auto;
+    height: 26px;
+}
+
+.SearchDefaultDateMode {
+    display: none;
+}
+
+.SearchBlockDateMode {
+    display: block;
+    display: inline-block;
+    word-wrap: break-word;
+    white-space: normal;
+}
+.SearchCPGridSpanCss {
+    display: inline-block;
+    word-wrap: break-word;
+    white-space: normal;
+    padding-right: 15px;
 }

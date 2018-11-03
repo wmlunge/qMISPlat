@@ -133,6 +133,8 @@ namespace CPFrameWork.UIInterface.Grid
 
         public List<CPGridColumn> ColumnCol { get; set; }
         public List<CPGridFunc> FuncCol { get; set; }
+        [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+        public List<CPGridColumn> SearchColumnCol { get; set; }
         public override void FormatInitValue()
         {
             base.FormatInitValue();

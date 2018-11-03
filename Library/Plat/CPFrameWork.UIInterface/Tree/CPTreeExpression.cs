@@ -21,7 +21,7 @@ namespace CPFrameWork.UIInterface.Tree
         {
             object obj = null;
             DataRow dr = this._vltContext.Get(DataRowKey) as DataRow;
-            obj = dr[fieldName];
+            obj = dr[fieldName.Trim()];
             if (obj == null)
                 return "";
             else

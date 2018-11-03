@@ -10,9 +10,10 @@ namespace CPFrameWork.UIInterface.Form
     {
         public enum PKValueTypeEnum
         {
-            IntSelfIncreasing = 1,
-            IntNotSelfIncreasing =2,
-            GUID = 3
+            IntSelfIncreasing = 1,//INT自增
+            IntNotSelfIncreasing = 2,//  INT非自增
+            GUID = 3,       //GUID
+            FormData = 4    //表单数据
 
         }
         public enum RelateTypeEnum
@@ -100,19 +101,23 @@ namespace CPFrameWork.UIInterface.Form
             /// </summary>
             CloseWindow = 1,
             /// <summary>
-            /// 关闭弹出层
+            /// 关闭弹出层
+
             /// </summary>
             CloseDiv = 2,
             /// <summary>
-            /// 返回到表单修改页面
+            /// 返回到表单修改页面
+
             /// </summary>
             ReturnEditPage = 3,
             /// <summary>
-            /// 跳转到指定页面
+            /// 跳转到指定页面
+
             /// </summary>
             ReturnOtherPage = 4,
             /// <summary>
-            /// 自定义脚本
+            /// 自定义脚本
+
             /// </summary>
             CustomJS = 5,
             /// <summary>
@@ -155,7 +160,8 @@ namespace CPFrameWork.UIInterface.Form
             PartUser = 2
         }
         /// <summary>
-        /// 初始化条件类型
+        /// 初始化条件类型
+
         /// </summary>
         public enum InitTimeTypeEnum
         {
@@ -164,21 +170,25 @@ namespace CPFrameWork.UIInterface.Form
             /// </summary>
             Add = 1,
             /// <summary>
-            /// 无值时初始化
+            /// 无值时初始化
+
             /// </summary>
             NoValue = 2,
             /// <summary>
-            /// 总是初始化
+            /// 总是初始化
+
             /// </summary>
             All = 3
         }
         /// <summary>
-        /// 初始化类型
+        /// 初始化类型
+
         /// </summary>
         public enum InitTypeEnum
         {
             /// <summary>
-            /// 固定值
+            /// 固定值
+
             /// </summary>
             StaticValue = 1,
             /// <summary>
@@ -186,7 +196,8 @@ namespace CPFrameWork.UIInterface.Form
             /// </summary>
             Auto = 2,
             /// <summary>
-            /// 表达式
+            /// 表达式
+
             /// </summary>
             Expression = 3,
             /// <summary>

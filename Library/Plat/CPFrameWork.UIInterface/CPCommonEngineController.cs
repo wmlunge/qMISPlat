@@ -56,14 +56,25 @@ namespace CPFrameWork.UIInterface
         [HttpGet]
         public FileResult ShowPicture()
         {
-
-            string FilePath = CPAppContext.QueryString<string>("FilePath");
-            FilePath = CPAppContext.CPFilesPath() + FilePath;
-            int lastIndex = FilePath.LastIndexOf(".");
-            string fileEx = FilePath.Substring(lastIndex + 1, FilePath.Length - lastIndex - 1);
-            // return new FileStreamResult(new FileStream(FilePath, FileMode.Open), "image/" + fileEx);
-            byte[] fileBytes = System.IO.File.ReadAllBytes(FilePath);
-            return File(fileBytes, "image/" + fileEx, System.IO.Path.GetFileName(FilePath));
+            try
+            {
+                string FilePath = CPAppContext.QueryString<string>("FilePath");
+                FilePath = CPAppContext.CPFilesPath() + FilePath;
+                int lastIndex = FilePath.LastIndexOf(".");
+                string fileEx = FilePath.Substring(lastIndex + 1, FilePath.Length - lastIndex - 1);
+                // return new FileStreamResult(new FileStream(FilePath, FileMode.Open), "image/" + fileEx);
+                byte[] fileBytes = System.IO.File.ReadAllBytes(FilePath);
+                return File(fileBytes, "image/" + fileEx, System.IO.Path.GetFileName(FilePath));
+            }
+            catch  {
+                string FilePath = CPAppContext.HostingEnvironment.ContentRootPath + "/wwwroot/Style/CommonImage/UserNoPic.png";
+                //FilePath = CPAppContext.CPFilesPath() + FilePath;
+                int lastIndex = FilePath.LastIndexOf(".");
+                string fileEx = FilePath.Substring(lastIndex + 1, FilePath.Length - lastIndex - 1);
+                // return new FileStreamResult(new FileStream(FilePath, FileMode.Open), "image/" + fileEx);
+                byte[] fileBytes = System.IO.File.ReadAllBytes(FilePath);
+                return File(fileBytes, "image/" + fileEx, System.IO.Path.GetFileName(FilePath));
+            }
         }
 
     }

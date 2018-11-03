@@ -12,6 +12,8 @@ using System.Data;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
+using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
+using Microsoft.Extensions.Logging;
 
 namespace CPFrameWork.UIInterface.Tree
 {
@@ -25,9 +27,28 @@ namespace CPFrameWork.UIInterface.Tree
         /// <returns></returns>
         public static void StartupInit(IServiceCollection services, IConfigurationRoot Configuration)
         {
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(new EFLoggerProvider());
             // Add framework services.
-            services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
-                options.UseSqlServer(Configuration.GetConnectionString("CPCommonIns")));
+            switch (CPAppContext.CurDbType())
+            {
+                case DbHelper.DbTypeEnum.SqlServer:
+                    services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
+                       options.UseSqlServer(Configuration.GetConnectionString("CPCommonIns")).UseLoggerFactory(loggerFactory));
+                    break;
+                case DbHelper.DbTypeEnum.MySql:
+                    services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
+                       options.UseMySql(Configuration.GetConnectionString("CPCommonIns")).UseLoggerFactory(loggerFactory));
+                    break;
+                //case DbHelper.DbTypeEnum.Oracle:
+                //    services.AddDbContext<CPFrameDbContext>(options =>//手工高亮
+                //       options.UseSqlServer(Configuration.GetConnectionString("CPFrameIns")).UseLoggerFactory(loggerFactory));
+                //    break;
+                default:
+                    services.AddDbContext<CPCommonDbContext>(options =>//手工高亮
+                      options.UseSqlServer(Configuration.GetConnectionString("CPCommonIns")).UseLoggerFactory(loggerFactory));
+                    break;
+            }
 
             services.TryAddTransient<ICPCommonDbContext, CPCommonDbContext>();
             services.TryAddTransient<BaseCPTreeRep, CPTreeRep>();
@@ -139,7 +160,7 @@ namespace CPFrameWork.UIInterface.Tree
                     {
                         node.DeleteFieldValue = "";
                     }
-                    node.DataRowJSON = "";
+                    node.DataRowJSON = CPUtils.DataRow2Json(dr);
                     if (string.IsNullOrEmpty(t.ChkSelFieldName))
                         node.ChkSelFieldName = "";
                     else
@@ -265,7 +286,7 @@ namespace CPFrameWork.UIInterface.Tree
                     node.NodeIcon = t.NodeIcon;
                     node.hasChildren = false;
                     node.TreeDataSourceId = t.Id;
-                    node.DataRowJSON = "";
+                    node.DataRowJSON = CPUtils.DataRow2Json(dr); 
                     if (string.IsNullOrEmpty(t.PKField) == false)
                     {
                         node.DeleteFieldValue = dr[t.PKField].ToString();

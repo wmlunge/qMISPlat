@@ -31,11 +31,13 @@ namespace CPFrameWork.Organ.Domain
         /// <summary>
         /// 部门类型         单位：1 部门：2
         /// </summary>
-        public Nullable<COEnum.DepTypeEnum> DepType { get; set; }
+        //public Nullable<COEnum.DepTypeEnum> DepType { get; set; }
+        public Nullable<int> DepType { get; set; }
         /// <summary>
         /// 部门状态
         /// </summary>
-        public Nullable<COEnum.DepStateEnum> DepState { get; set; }
+        //public Nullable<COEnum.DepStateEnum> DepState { get; set; }
+        public Nullable<int> DepState { get; set; }
         /// <summary>
         /// 部门领导用户ID
         /// </summary>
@@ -93,9 +95,9 @@ namespace CPFrameWork.Organ.Domain
             if (this.ParentId.HasValue == false)
                 this.ParentId = CPAppContext.RootParentId;
             if (this.DepType.HasValue == false)
-                this.DepType = COEnum.DepTypeEnum.Dep;
+                this.DepType = (int)COEnum.DepTypeEnum.Dep;
             if (this.DepState.HasValue == false)
-                this.DepState = COEnum.DepStateEnum.Normal;
+                this.DepState = (int)COEnum.DepStateEnum.Normal;
 
         }
     }
@@ -170,7 +172,8 @@ namespace CPFrameWork.Organ.Domain
         /// <summary>
         /// 性别
         /// </summary>
-        public Nullable<COEnum.UserSexEnum> UserSex { get; set; }
+        //public Nullable<COEnum.UserSexEnum> UserSex { get; set; }
+        public Nullable<int> UserSex { get; set; }
         /// <summary>
         /// 用户描述
         /// </summary>
@@ -235,7 +238,7 @@ namespace CPFrameWork.Organ.Domain
             if (this.IsOutUser.HasValue == false)
                 this.IsOutUser = false;
             if (this.UserSex.HasValue == false)
-                this.UserSex = COEnum.UserSexEnum.Man;
+                this.UserSex = (int)COEnum.UserSexEnum.Man;
             //if (this.ShowOrder.HasValue == false)
             //    this.ShowOrder = 10;
         }
@@ -321,14 +324,15 @@ namespace CPFrameWork.Organ.Domain
         public System.Guid UserKey { get; set; }
         public int UserId { get; set; }
         public Nullable<System.DateTime> LoginTime { get; set; }
-        public Nullable<CPEnum.DeviceTypeEnum> LoginDevice { get; set; }
+        //public Nullable<CPEnum.DeviceTypeEnum> LoginDevice { get; set; }
+        public Nullable<int> LoginDevice { get; set; }
         public override void FormatInitValue()
         {
             base.FormatInitValue();
             if (this.LoginTime.HasValue == false)
                 this.LoginTime = DateTime.Now;
             if (this.LoginDevice.HasValue == false)
-                this.LoginDevice = CPEnum.DeviceTypeEnum.PCBrowser;
+                this.LoginDevice = (int)CPEnum.DeviceTypeEnum.PCBrowser;
         }
     }
 

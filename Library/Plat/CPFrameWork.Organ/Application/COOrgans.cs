@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,9 +32,33 @@ namespace CPFrameWork.Organ.Application
         public static void StartupInit(IServiceCollection services, IConfigurationRoot Configuration)
         {
             // Add framework services.
-            services.AddDbContext<CODbContext>(options =>//手工高亮
-                options.UseSqlServer(Configuration.GetConnectionString("CPOrganIns")));
-
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(new EFLoggerProvider());
+            switch (CPAppContext.CurDbType())
+            {
+                case DbHelper.DbTypeEnum.SqlServer:
+                    services.AddDbContext<CODbContext>(options =>//手工高亮
+                       options.UseSqlServer(Configuration.GetConnectionString("CPOrganIns")).UseLoggerFactory(loggerFactory));
+                    break;
+                case DbHelper.DbTypeEnum.MySql:
+                    services.AddDbContext<CODbContext>(options =>//手工高亮
+                       options.UseMySql(Configuration.GetConnectionString("CPOrganIns"), mysqlOptions =>
+                       {
+                           mysqlOptions
+                               .CharSetBehavior(CharSetBehavior.AppendToAllColumns)
+                               .AnsiCharSet(CharSet.Latin1)
+                               .UnicodeCharSet(CharSet.Utf8mb4);
+                       }).UseLoggerFactory(loggerFactory));
+                    break;
+                //case DbHelper.DbTypeEnum.Oracle:
+                //    services.AddDbContext<CPFrameDbContext>(options =>//手工高亮
+                //       options.UseSqlServer(Configuration.GetConnectionString("CPFrameIns")).UseLoggerFactory(loggerFactory));
+                //    break;
+                default:
+                    services.AddDbContext<CODbContext>(options =>//手工高亮
+                      options.UseSqlServer(Configuration.GetConnectionString("CPOrganIns")).UseLoggerFactory(loggerFactory));
+                    break;
+            }
             services.TryAddTransient<ICODbContext, CODbContext>();
             services.TryAddTransient<IRepository<COUser>, COUserRep>();
             services.TryAddTransient<IRepository<CORoleUserRelate>, CORoleUserRelateRep>();
@@ -320,7 +346,7 @@ namespace CPFrameWork.Organ.Application
         {
             // return this._BaseCODepRep.Get().ToList();
             ISpecification<CODep> specification;
-            specification = new ExpressionSpecification<CODep>(t => t.DepState == COEnum.DepStateEnum.Normal);
+            specification = new ExpressionSpecification<CODep>(t => t.DepState == (int)COEnum.DepStateEnum.Normal);
             IList<CODep> col = this._BaseCODepRep.GetByCondition(specification);
             return col.ToList();
         }
@@ -345,7 +371,7 @@ namespace CPFrameWork.Organ.Application
         public bool SetDepDeleteState(int depId)
         {
             CODep dep = this.GetDepById(depId, false);
-            dep.DepState = COEnum.DepStateEnum.Delete;
+            dep.DepState = (int)COEnum.DepStateEnum.Delete;
             this._BaseCODepRep.Update(dep);
             this.InitDepUsers(depId, new List<CODepUserRelate>());
             return true;
@@ -409,7 +435,7 @@ namespace CPFrameWork.Organ.Application
                  UserId = userId,
                  UserKey = userKey,
                  LoginTime = DateTime.Now,
-                 LoginDevice = deviceType
+                 LoginDevice =(int) deviceType
             };
             return this._COUserIdentityRep.Add(iden) > 0 ? true : false;
         }

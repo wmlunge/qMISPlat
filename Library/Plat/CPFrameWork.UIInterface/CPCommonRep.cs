@@ -5,6 +5,7 @@ using CPFrameWork.UIInterface.Grid;
 using CPFrameWork.UIInterface.Tab;
 using CPFrameWork.UIInterface.Tree;
 using CPFrameWork.Utility.DbOper;
+using MySql.Data.MySqlClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -30,7 +31,7 @@ namespace CPFrameWork.UIInterface
             List<CPFormField> fieldCol, ref string pkValue, string formDataJSON, out string errorMsg);
         public abstract DataSet GetConfig(List<int> formIdCol);
         public abstract bool SyncConfigFromDataSet(int targetSysId, DataSet ds, bool isCreateNew);
-        public abstract   bool SaveFormFieldRightForAllUser(int formId, int groupId, List<int> FieldIdCol, CPFormEnum.AccessTypeEnum accessType);
+        public abstract bool SaveFormFieldRightForAllUser(int formId, int groupId, List<int> FieldIdCol, CPFormEnum.AccessTypeEnum accessType);
     }
     internal class CPFormRep : BaseCPFormRep
     {
@@ -59,12 +60,12 @@ namespace CPFrameWork.UIInterface
                     string strSql = "SELECT FormId from Form_Main where FormCode in ('" + delFormCodes.Replace(",", "','") + "')";
                     string formIds = "";
                     IDataReader dr = _helper.ExecuteReader(strSql);
-                    while(dr.Read())
+                    while (dr.Read())
                     {
                         if (string.IsNullOrEmpty(formIds))
                             formIds = dr["FormId"].ToString();
                         else
-                            formIds += "," +  dr["FormId"].ToString();
+                            formIds += "," + dr["FormId"].ToString();
                     }
                     dr.Close();
                     string delSql = "";
@@ -154,7 +155,7 @@ namespace CPFrameWork.UIInterface
             #endregion
 
             #region Form_ChildTable
-          
+
             if (ds.Tables["Form_ChildTable"] != null)
             {
                 foreach (DataRow dr in ds.Tables["Form_ChildTable"].Rows)
@@ -242,7 +243,7 @@ namespace CPFrameWork.UIInterface
                         }
                         else
                         {
-                            cmdInsert.Parameters.AddWithValue("@" + dc.ColumnName,DBNull.Value);
+                            cmdInsert.Parameters.AddWithValue("@" + dc.ColumnName, DBNull.Value);
                         }
                     }
                     int newId = int.Parse(_helper.ExecuteScalar(cmdInsert).ToString());
@@ -259,7 +260,7 @@ namespace CPFrameWork.UIInterface
                     dr["FormId"] = oldNewFormId[int.Parse(dr["FormId"].ToString())];
                     dr["ViewId"] = oldNewViewId[int.Parse(dr["ViewId"].ToString())];
                     dr["FieldId"] = oldNewFieldId[int.Parse(dr["FieldId"].ToString())];
-                    string insertSql = CPAppContext.GetInsertSql("Form_View_Inner", dsStruct.Tables["Form_View_Inner"].Columns, dr); 
+                    string insertSql = CPAppContext.GetInsertSql("Form_View_Inner", dsStruct.Tables["Form_View_Inner"].Columns, dr);
                     SqlCommand cmdInsert = new SqlCommand(insertSql, _helper.GetConnection() as SqlConnection);
                     foreach (DataColumn dc in dsStruct.Tables["Form_View_Inner"].Columns)
                     {
@@ -479,7 +480,8 @@ namespace CPFrameWork.UIInterface
         public override DataSet GetConfig(List<int> formIdCol)
         {
             string ids = "";
-            formIdCol.ForEach(t => {
+            formIdCol.ForEach(t =>
+            {
                 if (string.IsNullOrEmpty(ids))
                     ids = t.ToString();
                 else
@@ -613,9 +615,48 @@ namespace CPFrameWork.UIInterface
             foreach (DataColumn dc in dr.Table.Columns)
             {
                 cmd.Parameters.AddWithValue("@" + dc.ColumnName, dr[dc.ColumnName]);
-              //  cmd.Parameters.Add("@" + dc.ColumnName, GetSqlType(dc.DataType )); 
+                //  cmd.Parameters.Add("@" + dc.ColumnName, GetSqlType(dc.DataType )); 
             }
 
+            return cmd;
+
+        }
+        /// <summary>
+        /// MYSQL更新语句生成方法，返回CMD
+        /// add by zzh 20180818
+        /// </summary>
+        /// <param name="dr"></param>
+        /// <param name="conn"></param>
+        /// <returns></returns>
+        private MySqlCommand GetUpdateCommand(DataRow dr, MySqlConnection conn)
+        {
+            string sql = "UPDATE " + dr.Table.TableName;
+            string field = "";
+            string pk = "";
+            foreach (DataColumn dc in dr.Table.Columns)
+            {
+                if (dr.Table.PrimaryKey.Contains(dc))
+                {
+                    if (string.IsNullOrEmpty(pk))
+                        pk = dc.ColumnName + "=@" + dc.ColumnName;
+                    else
+                        pk += " AND " + dc.ColumnName + "=@" + dc.ColumnName;
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(field))
+                        field = dc.ColumnName + "=@" + dc.ColumnName;
+                    else
+                        field += " , " + dc.ColumnName + "=@" + dc.ColumnName;
+                }
+            }
+            sql += " SET " + field + " WHERE " + pk;
+            MySqlCommand cmd = new MySqlCommand(sql, conn);
+            foreach (DataColumn dc in dr.Table.Columns)
+            {
+                cmd.Parameters.AddWithValue("@" + dc.ColumnName, dr[dc.ColumnName]);
+                //  cmd.Parameters.Add("@" + dc.ColumnName, GetSqlType(dc.DataType )); 
+            }
             return cmd;
 
         }
@@ -665,7 +706,48 @@ namespace CPFrameWork.UIInterface
             return cmd;
 
         }
+        /// <summary>
+        /// 生成针对 MYSQL数据库的INSERRT语句
+        /// add by zzh 20180818
+        /// </summary>
+        /// <param name="dr"></param>
+        /// <param name="conn"></param>
+        /// <returns></returns>
+        private MySqlCommand GetInsertCommand(DataRow dr, MySqlConnection conn)
+        {
+            string sql = "insert into " + dr.Table.TableName;
+            string field = "";
+            string fieldValue = "";
+            foreach (DataColumn dc in dr.Table.Columns)
+            {
+                if (dc.AutoIncrement)
+                {
+                    continue;
+                }
+                if (string.IsNullOrEmpty(field))
+                    field = dc.ColumnName;
+                else
+                    field += " , " + dc.ColumnName;
+                if (string.IsNullOrEmpty(fieldValue))
+                    fieldValue = "@" + dc.ColumnName;
+                else
+                    fieldValue += " , @" + dc.ColumnName;
 
+            }
+            sql += " ( " + field + ") VALUES ( " + fieldValue + ")";
+            MySqlCommand cmd = new MySqlCommand(sql, conn);
+            foreach (DataColumn dc in dr.Table.Columns)
+            {
+                if (dc.AutoIncrement)
+                {
+                    continue;
+                }
+                cmd.Parameters.AddWithValue("@" + dc.ColumnName, dr[dc.ColumnName]);
+            }
+
+            return cmd;
+
+        }
         private SqlCommand GetDeleteCommand(DataRow dr, SqlConnection conn)
         {
             string sql = "DELETE FROM  " + dr.Table.TableName;
@@ -691,9 +773,41 @@ namespace CPFrameWork.UIInterface
             return cmd;
 
         }
+        /// <summary>
+        /// 生成针对 MYSQL数据库的DELETE语句
+        /// add by zzh 20180818
+        /// </summary>
+        /// <param name="dr"></param>
+        /// <param name="conn"></param>
+        /// <returns></returns>
 
+        private MySqlCommand GetDeleteCommand(DataRow dr, MySqlConnection conn)
+        {
+            string sql = "DELETE FROM  " + dr.Table.TableName;
+            string pk = "";
+            foreach (DataColumn dc in dr.Table.Columns)
+            {
+                if (dr.Table.PrimaryKey.Contains(dc))
+                {
+                    if (string.IsNullOrEmpty(pk))
+                        pk = dc.ColumnName + "=@" + dc.ColumnName;
+                    else
+                        pk += " AND " + dc.ColumnName + "=@" + dc.ColumnName;
+                }
+
+            }
+            sql += " WHERE " + pk;
+            MySqlCommand cmd = new MySqlCommand(sql, conn);
+            foreach (DataColumn dc in dr.Table.Columns)
+            {
+                cmd.Parameters.AddWithValue("@" + dc.ColumnName, dr[dc.ColumnName]);
+            }
+
+            return cmd;
+
+        }
         public override bool SaveData(CPForm form, List<CPFormChildTable> childTableCol,
-            List<CPFormField> fieldCol,ref string pkValue, string formDataJSON, out string errorMsg)
+            List<CPFormField> fieldCol, ref string pkValue, string formDataJSON, out string errorMsg)
         {
             bool b = true;
             errorMsg = "";
@@ -742,7 +856,7 @@ namespace CPFrameWork.UIInterface
                                 fields += "," + t.FieldName;
                         }
                     });
-                    sql += ";SELECT " + fields + " FROM " + cTable.TableName;
+                    sql += " SELECT " + fields + " FROM " + cTable.TableName;
                     if (string.IsNullOrEmpty(tmpPKValue0))
                     {
                         sql += " WHERE 1=2 ";
@@ -799,13 +913,17 @@ namespace CPFrameWork.UIInterface
                                     pkValue = max0.ToString();
                                 }
                             }
+                            else if (form.PKValueType == CPFormEnum.PKValueTypeEnum.FormData)
+                            {
+                                pkValue = mainTableObject.Value<string>(form.PKFieldName);
+                            }
                             #endregion
                             string tmppkValue = pkValue;
                             mFieldCol.ForEach(t =>
                             {
                                 if (t.FieldName.Equals(form.PKFieldName, StringComparison.CurrentCultureIgnoreCase))
                                 {
-                                    if (form.PKValueType == CPFormEnum.PKValueTypeEnum.GUID || form.PKValueType == CPFormEnum.PKValueTypeEnum.IntNotSelfIncreasing)
+                                    if (form.PKValueType == CPFormEnum.PKValueTypeEnum.GUID || form.PKValueType == CPFormEnum.PKValueTypeEnum.IntNotSelfIncreasing || form.PKValueType == CPFormEnum.PKValueTypeEnum.FormData)
                                     {
                                         drNew[t.FieldName] = tmppkValue;
                                     }
@@ -854,7 +972,7 @@ namespace CPFrameWork.UIInterface
                                 else if (ds.Tables[form.MainTableName].Columns[t.FieldName].DataType == Type.GetType("System.DateTime"))
                                 {
                                     string sValue = string.Empty;
-                                    if (Convert.IsDBNull(mainTableObject[t.FieldName])==false && mainTableObject[t.FieldName] != null)
+                                    if (Convert.IsDBNull(mainTableObject[t.FieldName]) == false && mainTableObject[t.FieldName] != null)
                                     {
                                         sValue = mainTableObject[t.FieldName].ToString();
                                     }
@@ -866,7 +984,7 @@ namespace CPFrameWork.UIInterface
                                     {
                                         drNew[t.FieldName] = sValue;
                                     }
-                                } 
+                                }
                                 else
                                 {
                                     drNew[t.FieldName] = mainTableObject[t.FieldName];
@@ -981,7 +1099,7 @@ namespace CPFrameWork.UIInterface
                                                          )
                                             {
                                                 string sValue = string.Empty;
-                                                sValue = cRowValue[t.FieldName].ToString();                                              
+                                                sValue = cRowValue[t.FieldName].ToString();
                                                 if (string.IsNullOrEmpty(sValue))
                                                 {
                                                     dr[t.FieldName] = DBNull.Value;
@@ -1010,7 +1128,7 @@ namespace CPFrameWork.UIInterface
                                                 if (Convert.IsDBNull(cRowValue[t.FieldName]) == false && cRowValue[t.FieldName] != null)
                                                 {
                                                     sValue = cRowValue[t.FieldName].ToString();
-                                                }                                                
+                                                }
                                                 if (string.IsNullOrEmpty(sValue))
                                                 {
                                                     dr[t.FieldName] = DBNull.Value;
@@ -1037,7 +1155,7 @@ namespace CPFrameWork.UIInterface
                                     dsChild.Tables[cTable.TableName].Rows.Add(dr);
 
                                 }
-                              //  daChild.Update(dsChild.Tables[cTable.TableName]);
+                                //  daChild.Update(dsChild.Tables[cTable.TableName]);
                             });
                             #endregion
                             trans.Commit();
@@ -1097,7 +1215,7 @@ namespace CPFrameWork.UIInterface
                                 {
                                     string sValue = string.Empty;
                                     sValue = mainTableObject[t.FieldName].ToString();
-                                  
+
                                     if (string.IsNullOrEmpty(sValue))
                                     {
                                         ds.Tables[form.MainTableName].Rows[0][t.FieldName] = DBNull.Value;
@@ -1110,7 +1228,7 @@ namespace CPFrameWork.UIInterface
                                 else if (ds.Tables[form.MainTableName].Columns[t.FieldName].DataType == Type.GetType("System.Boolean"))
                                 {
                                     string sValue = string.Empty;
-                                    sValue = mainTableObject[t.FieldName].ToString();                                    
+                                    sValue = mainTableObject[t.FieldName].ToString();
                                     if (string.IsNullOrEmpty(sValue))
                                     {
                                         ds.Tables[form.MainTableName].Rows[0][t.FieldName] = DBNull.Value;
@@ -1126,7 +1244,7 @@ namespace CPFrameWork.UIInterface
                                     if (Convert.IsDBNull(mainTableObject[t.FieldName]) == false && mainTableObject[t.FieldName] != null)
                                     {
                                         sValue = mainTableObject[t.FieldName].ToString();
-                                    } 
+                                    }
                                     if (string.IsNullOrEmpty(sValue))
                                     {
                                         ds.Tables[form.MainTableName].Rows[0][t.FieldName] = DBNull.Value;
@@ -1233,7 +1351,7 @@ namespace CPFrameWork.UIInterface
                                                 childPKValue = max0.ToString();
                                             }
                                         }
-                                      
+
                                         cFieldCol.ForEach(t =>
                                         {
                                             if (t.FieldName.Equals(cTable.PKFieldName, StringComparison.CurrentCultureIgnoreCase))
@@ -1245,7 +1363,7 @@ namespace CPFrameWork.UIInterface
                                                 else
                                                     return;
                                             }
-                                          
+
                                             if (t.FieldName.Equals(cTable.RelateFieldName))
                                             {
                                                 dr[t.FieldName] = tmppkValue;
@@ -1266,10 +1384,10 @@ namespace CPFrameWork.UIInterface
                                                 {
                                                     string sValue = string.Empty;
                                                     sValue = cRowValue[t.FieldName].ToString();
-                                                    
+
                                                     if (string.IsNullOrEmpty(sValue))
                                                     {
-                                                        dr[t.FieldName] =  DBNull.Value;
+                                                        dr[t.FieldName] = DBNull.Value;
                                                     }
                                                     else
                                                     {
@@ -1338,7 +1456,7 @@ namespace CPFrameWork.UIInterface
                                             {
                                                 string sValue = string.Empty;
                                                 sValue = cRowValue[t.FieldName].ToString();
-                                               
+
                                                 if (string.IsNullOrEmpty(sValue))
                                                 {
                                                     DRS[0][t.FieldName] = DBNull.Value;
@@ -1352,7 +1470,7 @@ namespace CPFrameWork.UIInterface
                                             {
                                                 string sValue = string.Empty;
                                                 sValue = cRowValue[t.FieldName].ToString();
-                                                
+
                                                 if (string.IsNullOrEmpty(sValue))
                                                 {
                                                     DRS[0][t.FieldName] = DBNull.Value;
@@ -1360,6 +1478,732 @@ namespace CPFrameWork.UIInterface
                                                 else
                                                 {
                                                     DRS[0][t.FieldName] = sValue;
+                                                }
+                                            }
+                                            else if (DRS[0].Table.Columns[t.FieldName].DataType == Type.GetType("System.DateTime"))//author:WANGYY date:2018/10/24 desc:时间类型可以为空
+                                            {
+                                                string sValue = string.Empty;
+                                                sValue = cRowValue[t.FieldName].ToString();
+
+                                                if (string.IsNullOrEmpty(sValue))
+                                                {
+                                                    DRS[0][t.FieldName] = DBNull.Value;
+                                                }
+                                                else
+                                                {
+                                                    DRS[0][t.FieldName] = sValue;
+                                                }
+                                            } else
+                                            {
+                                                DRS[0][t.FieldName] = cRowValue[t.FieldName];
+                                            }
+                                        });
+                                        daChild.UpdateCommand = this.GetUpdateCommand(DRS[0], conn);
+                                        daChild.UpdateCommand.Transaction = trans;
+                                        daChild.UpdateCommand.ExecuteNonQuery();
+                                    }
+                                }
+                                //  daChild.Update(dsChild.Tables[cTable.TableName]);
+                            });
+                            #endregion
+                            trans.Commit();
+                        }
+                        catch (Exception ex)
+                        {
+                            trans.Rollback();
+                            conn.Close();
+                            errorMsg = ex.Message.ToString();
+                            return false;
+                        }
+                    }
+                    conn.Close();
+
+
+                    #endregion
+                }
+            }
+            else if (CPAppContext.CurDbType() == DbHelper.DbTypeEnum.MySql)
+            {
+                if (string.IsNullOrEmpty(pkValue))
+                {
+                    #region 新增
+
+                    MySqlConnection conn = _helper.GetConnection() as MySqlConnection;
+                    conn.Open();
+                    using (MySqlTransaction trans = conn.BeginTransaction())
+                    {
+                        try
+                        {
+                            #region 主表
+                            MySqlCommand cmd = new MySqlCommand(tableSql[form.MainTableName], conn);
+                            cmd.Transaction = trans;
+                            MySqlDataAdapter da = new MySqlDataAdapter(cmd);
+                            // SqlCommandBuilder builder = new SqlCommandBuilder(da);
+                            //AddWithKey: 自动填充数据表结构,如：主键和限制
+                            //预设值Add,不填充结构
+                            da.MissingSchemaAction = MissingSchemaAction.AddWithKey;//Default Value is: Add
+                            DataSet ds = new DataSet();
+                            da.Fill(ds);
+                            ds.Tables[0].TableName = form.MainTableName;
+                            JObject mainTableObject = JsonConvert.DeserializeObject<JObject>(Convert.ToString(DynamicObject[form.MainTableName]));
+                            List<CPFormField> mFieldCol = fieldCol.Where(c => c.TableName.Equals(form.MainTableName)).ToList();
+                            DataRow drNew = ds.Tables[form.MainTableName].NewRow();
+                            string sqlTmp = "";
+                            #region 设置主键字段的值
+                            if (form.PKValueType == CPFormEnum.PKValueTypeEnum.GUID)
+                                pkValue = Guid.NewGuid().ToString();
+                            else if (form.PKValueType == CPFormEnum.PKValueTypeEnum.IntNotSelfIncreasing)
+                            {
+                                sqlTmp = "select  ISNULL(MAX('" + form.PKFieldName + "'),0) + 1 from '" + form.MainTableName + "'";
+                                MySqlCommand cmdTmp0 = new MySqlCommand(sqlTmp, conn);
+                                cmdTmp0.Transaction = trans;
+                                object max0 = cmdTmp0.ExecuteScalar();
+                                if (DBNull.Value != max0 && null != max0)
+                                {
+                                    pkValue = max0.ToString();
+                                }
+                            }
+                            else if (form.PKValueType == CPFormEnum.PKValueTypeEnum.FormData)
+                            {
+                                pkValue = mainTableObject.Value<string>(form.PKFieldName);
+                            }
+                            #endregion
+                            string tmppkValue = pkValue;
+                            mFieldCol.ForEach(t =>
+                            {
+                                if (t.FieldName.Equals(form.PKFieldName, StringComparison.CurrentCultureIgnoreCase))
+                                {
+                                    if (form.PKValueType == CPFormEnum.PKValueTypeEnum.GUID || form.PKValueType == CPFormEnum.PKValueTypeEnum.IntNotSelfIncreasing || form.PKValueType == CPFormEnum.PKValueTypeEnum.FormData)
+                                    {
+                                        drNew[t.FieldName] = tmppkValue;
+                                    }
+                                    else
+                                    {
+                                        return;
+                                    }
+                                }
+
+                                // drNew[t.FieldName] = mainTableObject[t.FieldName];
+                                if (ds.Tables[form.MainTableName].Columns[t.FieldName].DataType == Type.GetType("System.Int16")
+                                     ||
+                                     ds.Tables[form.MainTableName].Columns[t.FieldName].DataType == Type.GetType("System.Int32")
+                                     ||
+                                     ds.Tables[form.MainTableName].Columns[t.FieldName].DataType == Type.GetType("System.Int64")
+                                     ||
+                                     ds.Tables[form.MainTableName].Columns[t.FieldName].DataType == Type.GetType("System.Double")
+                                      ||
+                                     ds.Tables[form.MainTableName].Columns[t.FieldName].DataType == Type.GetType("System.Single")
+                                     )
+                                {
+                                    string sValue = string.Empty;
+                                    sValue = mainTableObject[t.FieldName].ToString();
+                                    if (string.IsNullOrEmpty(sValue))
+                                    {
+                                        drNew[t.FieldName] = DBNull.Value;
+                                    }
+                                    else
+                                    {
+                                        drNew[t.FieldName] = sValue;
+                                    }
+                                }
+                                else if (ds.Tables[form.MainTableName].Columns[t.FieldName].DataType == Type.GetType("System.Boolean"))
+                                {
+                                    string sValue = string.Empty;
+                                    sValue = mainTableObject[t.FieldName].ToString();
+                                    if (string.IsNullOrEmpty(sValue))
+                                    {
+                                        drNew[t.FieldName] = DBNull.Value;
+                                    }
+                                    else
+                                    {
+                                        drNew[t.FieldName] = sValue;
+                                    }
+                                }
+                                else if (ds.Tables[form.MainTableName].Columns[t.FieldName].DataType == Type.GetType("System.SByte"))
+                                {
+                                    string sValue = string.Empty;
+                                    sValue = mainTableObject[t.FieldName].ToString();
+                                    if (string.IsNullOrEmpty(sValue))
+                                    {
+                                        drNew[t.FieldName] = DBNull.Value;
+                                    }
+                                    else
+                                    {
+                                        drNew[t.FieldName] = bool.Parse(sValue);
+                                    }
+                                }
+                                else if (ds.Tables[form.MainTableName].Columns[t.FieldName].DataType == Type.GetType("System.DateTime"))
+                                {
+                                    string sValue = string.Empty;
+                                    if (Convert.IsDBNull(mainTableObject[t.FieldName]) == false && mainTableObject[t.FieldName] != null)
+                                    {
+                                        sValue = mainTableObject[t.FieldName].ToString();
+                                    }
+                                    if (string.IsNullOrEmpty(sValue))
+                                    {
+                                        drNew[t.FieldName] = DBNull.Value;
+                                    }
+                                    else
+                                    {
+                                        drNew[t.FieldName] = sValue;
+                                    }
+                                }
+                                else
+                                {
+                                    drNew[t.FieldName] = mainTableObject[t.FieldName];
+                                }
+                            });
+                            ds.Tables[form.MainTableName].Rows.Add(drNew);
+                            if (da.InsertCommand == null)
+                            {
+                                da.InsertCommand = this.GetInsertCommand(drNew, conn);
+                                da.InsertCommand.Transaction = trans;
+                            }
+                            da.Update(ds.Tables[form.MainTableName]);
+                            //获取主键的值
+                            //pkValue = drNew[form.PKFieldName].ToString();
+                            if (form.PKValueType == CPFormEnum.PKValueTypeEnum.IntSelfIncreasing)
+                            {
+                                sqlTmp = "select Max(" + form.PKFieldName + ") from " + form.MainTableName;
+                                MySqlCommand cmdTmp = new MySqlCommand(sqlTmp, conn);
+                                cmdTmp.Transaction = trans;
+                                object max = cmdTmp.ExecuteScalar();
+                                if (DBNull.Value != max && null != max)
+                                {
+                                    pkValue = max.ToString();
+                                }
+                            }
+                            tmppkValue = pkValue;
+                            #endregion
+
+                            #region 子表 
+                            childTableCol.ForEach(cTable =>
+                            {
+                                MySqlCommand cmdChild = new MySqlCommand(tableSql[cTable.TableName], conn);
+                                cmdChild.Transaction = trans;
+                                MySqlDataAdapter daChild = new MySqlDataAdapter(cmdChild);
+                                //   SqlCommandBuilder builderChild = new SqlCommandBuilder(daChild);
+                                //AddWithKey: 自动填充数据表结构,如：主键和限制
+                                //预设值Add,不填充结构
+                                daChild.MissingSchemaAction = MissingSchemaAction.AddWithKey;//Default Value is: Add
+                                DataSet dsChild = new DataSet();
+                                daChild.Fill(dsChild);
+                                dsChild.Tables[0].TableName = cTable.TableName;
+                                var cTableObject = JsonConvert.DeserializeObject<dynamic>(Convert.ToString(DynamicObject[cTable.TableName]));
+                                List<CPFormField> cFieldCol = fieldCol.Where(c => c.TableName.Equals(cTable.TableName) && c.IsChildTable == false).ToList();
+                                foreach (var cRowValue in cTableObject)
+                                {
+                                    #region 先检查下必须 的几个字 段有没有值，没有则不保存这条数据
+                                    bool notSave = false;
+                                    if (string.IsNullOrEmpty(cTable.FieldNullNotSaveData) == false)
+                                    {
+
+                                        string[] sArray = cTable.FieldNullNotSaveData.Split(',');
+                                        for (int i = 0; i < sArray.Length; i++)
+                                        {
+                                            if (fieldCol.Where(c => c.TableName.Equals(cTable.TableName, StringComparison.CurrentCultureIgnoreCase)
+                                                       && c.FieldName.Equals(sArray[i], StringComparison.CurrentCultureIgnoreCase)).Count() <= 0)
+                                                continue;
+                                            object obj = cRowValue[sArray[i]];
+                                            if (Convert.IsDBNull(obj) || obj == null || string.IsNullOrEmpty(obj.ToString().Trim()))
+                                            {
+                                                notSave = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if (notSave)
+                                        continue;
+                                    #endregion
+                                    //新增
+                                    DataRow dr = dsChild.Tables[cTable.TableName].NewRow();
+                                    string childPKValue = "";
+                                    if (cTable.PKValueType == CPFormEnum.PKValueTypeEnum.GUID)
+                                        childPKValue = Guid.NewGuid().ToString();
+                                    else if (cTable.PKValueType == CPFormEnum.PKValueTypeEnum.IntNotSelfIncreasing)
+                                    {
+                                        sqlTmp = "select  ISNULL(MAX(" + cTable.PKFieldName + "),0) + 1 from " + cTable.TableName;
+                                        MySqlCommand cmdTmp0 = new MySqlCommand(sqlTmp, conn);
+                                        cmdTmp0.Transaction = trans;
+                                        object max0 = cmdTmp0.ExecuteScalar();
+                                        if (DBNull.Value != max0 && null != max0)
+                                        {
+                                            childPKValue = max0.ToString();
+                                        }
+                                    }
+                                    cFieldCol.ForEach(t =>
+                                    {
+                                        if (t.FieldName.Equals(cTable.PKFieldName, StringComparison.CurrentCultureIgnoreCase))
+                                        {
+                                            if (form.PKValueType == CPFormEnum.PKValueTypeEnum.GUID || form.PKValueType == CPFormEnum.PKValueTypeEnum.IntNotSelfIncreasing)
+                                            {
+                                                dr[t.FieldName] = childPKValue;
+                                            }
+                                            else
+                                                return;
+                                        }
+
+                                        if (t.FieldName.Equals(cTable.RelateFieldName))
+                                        {
+                                            dr[t.FieldName] = tmppkValue;
+                                        }
+                                        else
+                                        {
+                                            // dr[t.FieldName] = cRowValue[t.FieldName];
+                                            if (dr.Table.Columns[t.FieldName].DataType == Type.GetType("System.Int16")
+                                                         ||
+                                                         dr.Table.Columns[t.FieldName].DataType == Type.GetType("System.Int32")
+                                                         ||
+                                                         dr.Table.Columns[t.FieldName].DataType == Type.GetType("System.Int64")
+                                                         ||
+                                                         dr.Table.Columns[t.FieldName].DataType == Type.GetType("System.Double")
+                                                          ||
+                                                         dr.Table.Columns[t.FieldName].DataType == Type.GetType("System.Single")
+                                                         )
+                                            {
+                                                string sValue = string.Empty;
+                                                sValue = cRowValue[t.FieldName].ToString();
+                                                if (string.IsNullOrEmpty(sValue))
+                                                {
+                                                    dr[t.FieldName] = DBNull.Value;
+                                                }
+                                                else
+                                                {
+                                                    dr[t.FieldName] = sValue;
+                                                }
+                                            }
+                                            else if (dr.Table.Columns[t.FieldName].DataType == Type.GetType("System.Boolean"))
+                                            {
+                                                string sValue = string.Empty;
+                                                sValue = cRowValue[t.FieldName].ToString();
+                                                if (string.IsNullOrEmpty(sValue))
+                                                {
+                                                    dr[t.FieldName] = DBNull.Value;
+                                                }
+                                                else
+                                                {
+                                                    dr[t.FieldName] = sValue;
+                                                }
+                                            }
+                                            else if (dr.Table.Columns[t.FieldName].DataType == Type.GetType("System.SByte"))
+                                            {
+                                                string sValue = string.Empty;
+                                                sValue = cRowValue[t.FieldName].ToString();
+                                                if (string.IsNullOrEmpty(sValue))
+                                                {
+                                                    dr[t.FieldName] = DBNull.Value;
+                                                }
+                                                else
+                                                {
+                                                    dr[t.FieldName] = bool.Parse(sValue);
+                                                }
+                                            }
+                                            else if ((dr.Table.Columns[t.FieldName].DataType == Type.GetType("System.DateTime")))
+                                            {
+                                                string sValue = string.Empty;
+                                                if (Convert.IsDBNull(cRowValue[t.FieldName]) == false && cRowValue[t.FieldName] != null)
+                                                {
+                                                    sValue = cRowValue[t.FieldName].ToString();
+                                                }
+                                                if (string.IsNullOrEmpty(sValue))
+                                                {
+                                                    dr[t.FieldName] = DBNull.Value;
+                                                }
+                                                else
+                                                {
+                                                    dr[t.FieldName] = sValue;
+                                                }
+                                            }
+                                            else
+                                            {
+                                                dr[t.FieldName] = cRowValue[t.FieldName];
+                                            }
+                                        }
+                                    });
+                                    //dsChild.Tables[cTable.TableName].Rows.Add(dr);
+                                    //daChild.InsertCommand = GetInsertCommand(dr, conn);
+                                    //daChild.InsertCommand.Transaction = trans;
+
+                                    daChild.InsertCommand = this.GetInsertCommand(dr, conn);
+                                    daChild.InsertCommand.Transaction = trans;
+                                    //
+                                    daChild.InsertCommand.ExecuteNonQuery();
+                                    dsChild.Tables[cTable.TableName].Rows.Add(dr);
+
+                                }
+                                //  daChild.Update(dsChild.Tables[cTable.TableName]);
+                            });
+                            #endregion
+                            trans.Commit();
+                        }
+                        catch (Exception ex)
+                        {
+                            trans.Rollback();
+                            conn.Close();
+                            errorMsg = ex.Message.ToString();
+                            return false;
+                        }
+                    }
+                    conn.Close();
+
+                    #endregion
+                }
+                else
+                {
+                    #region 修改                   
+                    MySqlConnection conn = _helper.GetConnection() as MySqlConnection;
+                    conn.Open();
+                    using (MySqlTransaction trans = conn.BeginTransaction())
+                    {
+                        try
+                        {
+
+                            #region 主表
+
+
+                            MySqlCommand cmd = new MySqlCommand(tableSql[form.MainTableName], conn);
+                            cmd.Transaction = trans;
+                            MySqlDataAdapter da = new MySqlDataAdapter(cmd);
+                            //SqlCommandBuilder builder = new SqlCommandBuilder(da);
+                            //AddWithKey: 自动填充数据表结构,如：主键和限制
+                            //预设值Add,不填充结构
+                            da.MissingSchemaAction = MissingSchemaAction.AddWithKey;//Default Value is: Add
+                            DataSet ds = new DataSet();
+                            da.Fill(ds);
+                            ds.Tables[0].TableName = form.MainTableName;
+                            JObject mainTableObject = JsonConvert.DeserializeObject<JObject>(Convert.ToString(DynamicObject[form.MainTableName]));
+                            List<CPFormField> mFieldCol = fieldCol.Where(c => c.TableName.Equals(form.MainTableName)).ToList();
+                            mFieldCol.ForEach(t =>
+                            {
+                                if (t.FieldName.Equals(form.PKFieldName, StringComparison.CurrentCultureIgnoreCase))
+                                    return;
+                                // JObject jo = (JObject)mainTableObject[t.FieldName]; 
+                                if (ds.Tables[form.MainTableName].Columns[t.FieldName].DataType == Type.GetType("System.Int16")
+                                    ||
+                                    ds.Tables[form.MainTableName].Columns[t.FieldName].DataType == Type.GetType("System.Int32")
+                                    ||
+                                    ds.Tables[form.MainTableName].Columns[t.FieldName].DataType == Type.GetType("System.Int64")
+                                    ||
+                                    ds.Tables[form.MainTableName].Columns[t.FieldName].DataType == Type.GetType("System.Double")
+                                     ||
+                                    ds.Tables[form.MainTableName].Columns[t.FieldName].DataType == Type.GetType("System.Single")
+                                    )
+                                {
+                                    string sValue = string.Empty;
+                                    sValue = mainTableObject[t.FieldName].ToString();
+
+                                    if (string.IsNullOrEmpty(sValue))
+                                    {
+                                        ds.Tables[form.MainTableName].Rows[0][t.FieldName] = DBNull.Value;
+                                    }
+                                    else
+                                    {
+                                        ds.Tables[form.MainTableName].Rows[0][t.FieldName] = sValue;
+                                    }
+                                }
+                                else if (ds.Tables[form.MainTableName].Columns[t.FieldName].DataType == Type.GetType("System.Boolean"))
+                                {
+                                    string sValue = string.Empty;
+                                    sValue = mainTableObject[t.FieldName].ToString();
+                                    if (string.IsNullOrEmpty(sValue))
+                                    {
+                                        ds.Tables[form.MainTableName].Rows[0][t.FieldName] = DBNull.Value;
+                                    }
+                                    else
+                                    {
+                                        ds.Tables[form.MainTableName].Rows[0][t.FieldName] = sValue;
+                                    }
+                                }
+                                else if (ds.Tables[form.MainTableName].Columns[t.FieldName].DataType == Type.GetType("System.DateTime"))
+                                {
+                                    string sValue = string.Empty;
+                                    if (Convert.IsDBNull(mainTableObject[t.FieldName]) == false && mainTableObject[t.FieldName] != null)
+                                    {
+                                        sValue = mainTableObject[t.FieldName].ToString();
+                                    }
+                                    if (string.IsNullOrEmpty(sValue))
+                                    {
+                                        ds.Tables[form.MainTableName].Rows[0][t.FieldName] = DBNull.Value;
+                                    }
+                                    else
+                                    {
+                                        ds.Tables[form.MainTableName].Rows[0][t.FieldName] = sValue;
+                                    }
+                                }
+                                else if (ds.Tables[form.MainTableName].Columns[t.FieldName].DataType == Type.GetType("System.SByte"))
+                                {
+                                    string sValue = string.Empty;
+                                    if (Convert.IsDBNull(mainTableObject[t.FieldName]) == false && mainTableObject[t.FieldName] != null)
+                                    {
+                                        sValue = mainTableObject[t.FieldName].ToString();
+                                    }
+                                    if (string.IsNullOrEmpty(sValue))
+                                    {
+                                        ds.Tables[form.MainTableName].Rows[0][t.FieldName] = DBNull.Value;
+                                    }
+                                    else
+                                    {
+                                        ds.Tables[form.MainTableName].Rows[0][t.FieldName] = bool.Parse(sValue);
+                                    }
+                                }
+                                else
+                                {
+                                    ds.Tables[form.MainTableName].Rows[0][t.FieldName] = mainTableObject[t.FieldName];
+                                }
+                            });
+                            da.UpdateCommand = this.GetUpdateCommand(ds.Tables[form.MainTableName].Rows[0], conn);
+                            //MySqlCommandBuilder commandBuilder = new MySqlCommandBuilder(da);
+                            //commandBuilder.ConflictOption = ConflictOption.OverwriteChanges;
+                            //commandBuilder.GetUpdateCommand()
+                            da.UpdateCommand.Transaction = trans;
+                            //da.Update(ds.Tables[form.MainTableName]);
+                            da.UpdateCommand.ExecuteNonQuery();
+                            #endregion
+
+                            #region 子表
+                            string tmppkValue = pkValue;
+                            childTableCol.ForEach(cTable =>
+                            {
+                                MySqlCommand cmdChild = new MySqlCommand(tableSql[cTable.TableName], conn);
+                                cmdChild.Transaction = trans;
+                                MySqlDataAdapter daChild = new MySqlDataAdapter(cmdChild);
+                                //  SqlCommandBuilder builderChild = new SqlCommandBuilder(daChild);
+                                //AddWithKey: 自动填充数据表结构,如：主键和限制
+                                //预设值Add,不填充结构
+                                daChild.MissingSchemaAction = MissingSchemaAction.AddWithKey;//Default Value is: Add
+                                DataSet dsChild = new DataSet();
+                                daChild.Fill(dsChild);
+                                dsChild.Tables[0].TableName = cTable.TableName;
+                                var cTableObject = JsonConvert.DeserializeObject<dynamic>(Convert.ToString(DynamicObject[cTable.TableName]));
+                                List<CPFormField> cFieldCol = fieldCol.Where(c => c.TableName.Equals(cTable.TableName) && c.IsChildTable == false).ToList();
+                                //先看看有没有要删除的
+                                foreach (DataRow dr in dsChild.Tables[cTable.TableName].Rows)
+                                {
+                                    bool bExists = false;
+                                    foreach (var cRowValue in cTableObject)
+                                    {
+                                        if (bExists)
+                                            break;
+                                        cFieldCol.ForEach(t =>
+                                        {
+                                            if (t.FieldName.Equals(cTable.PKFieldName, StringComparison.CurrentCultureIgnoreCase))
+                                            {
+                                                if (dr[cTable.PKFieldName].ToString().Equals(Convert.ToString(cRowValue[t.FieldName])))
+                                                {
+                                                    bExists = true;
+                                                    return;
+                                                }
+                                            }
+                                        });
+
+                                    }
+                                    if (bExists == false)
+                                    {
+                                        daChild.DeleteCommand = this.GetDeleteCommand(dr, conn);
+                                        daChild.DeleteCommand.Transaction = trans;
+                                        daChild.DeleteCommand.ExecuteNonQuery();
+                                        dr.Delete();
+                                    }
+                                }
+                                foreach (var cRowValue in cTableObject)
+                                {
+                                    //找出修改和新增 的
+                                    if (cRowValue[cTable.PKFieldName] == null || Convert.ToString(cRowValue[cTable.PKFieldName]) == "")
+                                    {
+                                        //新增
+                                        #region 先检查下必须 的几个字 段有没有值，没有则不保存这条数据
+                                        bool notSave = false;
+                                        if (string.IsNullOrEmpty(cTable.FieldNullNotSaveData) == false)
+                                        {
+                                            string[] sArray = cTable.FieldNullNotSaveData.Split(',');
+                                            for (int i = 0; i < sArray.Length; i++)
+                                            {
+                                                if (fieldCol.Where(c => c.TableName.Equals(cTable.TableName, StringComparison.CurrentCultureIgnoreCase)
+                                                  && c.FieldName.Equals(sArray[i], StringComparison.CurrentCultureIgnoreCase)).Count() <= 0)
+                                                    continue;
+                                                object obj = cRowValue[sArray[i]];
+                                                if (Convert.IsDBNull(obj) || obj == null || string.IsNullOrEmpty(obj.ToString().Trim()))
+                                                {
+                                                    notSave = true;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if (notSave)
+                                            continue;
+                                        #endregion
+                                        DataRow dr = dsChild.Tables[cTable.TableName].NewRow();
+                                        string childPKValue = "";
+                                        if (cTable.PKValueType == CPFormEnum.PKValueTypeEnum.GUID)
+                                            childPKValue = Guid.NewGuid().ToString();
+                                        else if (cTable.PKValueType == CPFormEnum.PKValueTypeEnum.IntNotSelfIncreasing)
+                                        {
+                                            string sqlTmp = "select  IFNULL(MAX(" + cTable.PKFieldName + "),0) + 1 from " + cTable.TableName;
+                                            MySqlCommand cmdTmp0 = new MySqlCommand(sqlTmp, conn);
+                                            cmdTmp0.Transaction = trans;
+                                            object max0 = cmdTmp0.ExecuteScalar();
+                                            if (DBNull.Value != max0 && null != max0)
+                                            {
+                                                childPKValue = max0.ToString();
+                                            }
+                                        }
+
+                                        cFieldCol.ForEach(t =>
+                                        {
+                                            if (t.FieldName.Equals(cTable.PKFieldName, StringComparison.CurrentCultureIgnoreCase))
+                                            {
+                                                if (form.PKValueType == CPFormEnum.PKValueTypeEnum.GUID || form.PKValueType == CPFormEnum.PKValueTypeEnum.IntNotSelfIncreasing)
+                                                {
+                                                    dr[t.FieldName] = childPKValue;
+                                                }
+                                                else
+                                                    return;
+                                            }
+
+                                            if (t.FieldName.Equals(cTable.RelateFieldName))
+                                            {
+                                                dr[t.FieldName] = tmppkValue;
+                                            }
+                                            else
+                                            {
+                                                //  dr[t.FieldName] = cRowValue[t.FieldName];
+                                                if (dr.Table.Columns[t.FieldName].DataType == Type.GetType("System.Int16")
+                                                         ||
+                                                         dr.Table.Columns[t.FieldName].DataType == Type.GetType("System.Int32")
+                                                         ||
+                                                         dr.Table.Columns[t.FieldName].DataType == Type.GetType("System.Int64")
+                                                         ||
+                                                         dr.Table.Columns[t.FieldName].DataType == Type.GetType("System.Double")
+                                                          ||
+                                                         dr.Table.Columns[t.FieldName].DataType == Type.GetType("System.Single")
+                                                         )
+                                                {
+                                                    string sValue = string.Empty;
+                                                    sValue = cRowValue[t.FieldName].ToString();
+
+                                                    if (string.IsNullOrEmpty(sValue))
+                                                    {
+                                                        dr[t.FieldName] = DBNull.Value;
+                                                    }
+                                                    else
+                                                    {
+                                                        dr[t.FieldName] = sValue;
+                                                    }
+                                                }
+                                                else if (dr.Table.Columns[t.FieldName].DataType == Type.GetType("System.Boolean"))
+                                                {
+                                                    string sValue = string.Empty;
+                                                    sValue = cRowValue[t.FieldName].ToString();
+                                                    if (string.IsNullOrEmpty(sValue))
+                                                    {
+                                                        dr[t.FieldName] = DBNull.Value;
+                                                    }
+                                                    else
+                                                    {
+                                                        dr[t.FieldName] = sValue;
+                                                    }
+                                                }
+                                                else if (dr.Table.Columns[t.FieldName].DataType == Type.GetType("System.SByte"))
+                                                {
+                                                    string sValue = string.Empty;
+                                                    if (Convert.IsDBNull(dr[t.FieldName]) == false && dr[t.FieldName] != null)
+                                                    {
+                                                        sValue = cRowValue[t.FieldName].ToString();
+                                                    }
+                                                    if (string.IsNullOrEmpty(sValue))
+                                                    {
+                                                        dr[t.FieldName] = DBNull.Value;
+                                                    }
+                                                    else
+                                                    {
+                                                        dr[t.FieldName] = bool.Parse(sValue);
+                                                    }
+                                                }
+                                                else if ((dr.Table.Columns[t.FieldName].DataType == Type.GetType("System.DateTime")))
+                                                {
+                                                    string sValue = string.Empty;
+                                                    if (Convert.IsDBNull(cRowValue[t.FieldName]) == false && cRowValue[t.FieldName] != null)
+                                                    {
+                                                        sValue = cRowValue[t.FieldName].ToString();
+                                                    }
+                                                    if (string.IsNullOrEmpty(sValue))
+                                                    {
+                                                        dr[t.FieldName] = DBNull.Value;
+                                                    }
+                                                    else
+                                                    {
+                                                        dr[t.FieldName] = sValue;
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    dr[t.FieldName] = cRowValue[t.FieldName];
+                                                }
+                                            }
+                                        });
+                                        daChild.InsertCommand = this.GetInsertCommand(dr, conn);
+                                        daChild.InsertCommand.Transaction = trans;
+                                        //
+                                        daChild.InsertCommand.ExecuteNonQuery();
+                                        dsChild.Tables[cTable.TableName].Rows.Add(dr);
+                                    }
+                                    else
+                                    {
+                                        DataRow[] DRS = dsChild.Tables[cTable.TableName].Select(cTable.PKFieldName + "='" + cRowValue[cTable.PKFieldName] + "'");
+                                        cFieldCol.ForEach(t =>
+                                        {
+                                            if (t.FieldName.Equals(cTable.PKFieldName, StringComparison.CurrentCultureIgnoreCase))
+                                                return;
+                                            //  DRS[0][t.FieldName] = cRowValue[t.FieldName];
+                                            if (DRS[0].Table.Columns[t.FieldName].DataType == Type.GetType("System.Int16")
+                                                          ||
+                                                          DRS[0].Table.Columns[t.FieldName].DataType == Type.GetType("System.Int32")
+                                                          ||
+                                                          DRS[0].Table.Columns[t.FieldName].DataType == Type.GetType("System.Int64")
+                                                          ||
+                                                          DRS[0].Table.Columns[t.FieldName].DataType == Type.GetType("System.Double")
+                                                           ||
+                                                          DRS[0].Table.Columns[t.FieldName].DataType == Type.GetType("System.Single")
+                                                          )
+                                            {
+                                                string sValue = string.Empty;
+                                                sValue = cRowValue[t.FieldName].ToString();
+
+                                                if (string.IsNullOrEmpty(sValue))
+                                                {
+                                                    DRS[0][t.FieldName] = DBNull.Value;
+                                                }
+                                                else
+                                                {
+                                                    DRS[0][t.FieldName] = sValue;
+                                                }
+                                            }
+                                            else if (DRS[0].Table.Columns[t.FieldName].DataType == Type.GetType("System.Boolean"))
+                                            {
+                                                string sValue = string.Empty;
+                                                sValue = cRowValue[t.FieldName].ToString();
+
+                                                if (string.IsNullOrEmpty(sValue))
+                                                {
+                                                    DRS[0][t.FieldName] = DBNull.Value;
+                                                }
+                                                else
+                                                {
+                                                    DRS[0][t.FieldName] = sValue;
+                                                }
+                                            }
+                                            else if (DRS[0].Table.Columns[t.FieldName].DataType == Type.GetType("System.SByte"))
+                                            {
+                                                string sValue = string.Empty;
+                                                sValue = cRowValue[t.FieldName].ToString();
+
+                                                if (string.IsNullOrEmpty(sValue))
+                                                {
+                                                    DRS[0][t.FieldName] = DBNull.Value;
+                                                }
+                                                else
+                                                {
+                                                    DRS[0][t.FieldName] = bool.Parse(sValue);
                                                 }
                                             }
                                             else
@@ -1372,7 +2216,7 @@ namespace CPFrameWork.UIInterface
                                         daChild.UpdateCommand.ExecuteNonQuery();
                                     }
                                 }
-                              //  daChild.Update(dsChild.Tables[cTable.TableName]);
+                                //  daChild.Update(dsChild.Tables[cTable.TableName]);
                             });
                             #endregion
                             trans.Commit();
@@ -1405,20 +2249,22 @@ namespace CPFrameWork.UIInterface
                 return true;
             DbHelper _helper = new DbHelper("CPCommonIns", CPAppContext.CurDbType());
             string ids = "";
-            FieldIdCol.ForEach(t => {
-                if(string.IsNullOrEmpty(ids))
+            FieldIdCol.ForEach(t =>
+            {
+                if (string.IsNullOrEmpty(ids))
                 {
                     ids = t.ToString();
                 }
                 else
                 {
-                    ids += "," +  t.ToString();
+                    ids += "," + t.ToString();
 
                 }
             });
             string strSql = "";// "DELETE FROM Form_FieldRight where formid=" + formId + " and GroupID=" + groupId;
             strSql += "DELETE FROM Form_FieldRight WHERE FieldId in (" + ids + ") AND formid=" + formId + " and GroupID=" + groupId;
-            FieldIdCol.ForEach(t => {
+            FieldIdCol.ForEach(t =>
+            {
                 strSql += @";INSERT INTO Form_FieldRight
                            (GroupID
                            , FieldId
@@ -1427,7 +2273,7 @@ namespace CPFrameWork.UIInterface
                            , AccessScoreType
                           )
                      VALUES
-                           (" + groupId + "," + t + "," + formId + "," + (int)accessType + "," +  (int)CPFormEnum.AccessScoreTypeEnum.AllUser + ")";
+                           (" + groupId + "," + t + "," + formId + "," + (int)accessType + "," + (int)CPFormEnum.AccessScoreTypeEnum.AllUser + ")";
             });
             _helper.ExecuteNonQuery(strSql);
             return true;
@@ -1533,17 +2379,17 @@ namespace CPFrameWork.UIInterface
 
             bool b = true;
             #region 先删除数据           
-            if (isCreateNew==false)
+            if (isCreateNew == false)
             {
                 string delGridCodes = "";
                 foreach (DataRow drMain in ds.Tables["Grid_Main"].Rows)
-                { 
-                        if (string.IsNullOrEmpty(delGridCodes)) delGridCodes = drMain["GridCode"].ToString();
-                        else delGridCodes += "," + drMain["GridCode"].ToString();
+                {
+                    if (string.IsNullOrEmpty(delGridCodes)) delGridCodes = drMain["GridCode"].ToString();
+                    else delGridCodes += "," + drMain["GridCode"].ToString();
                 }
                 if (string.IsNullOrEmpty(delGridCodes) == false)
                 {
-                   string  delSql = @"DELETE FROM Grid_Func WHERE GridId IN (SELECT GridId FROM Grid_Main WHERE GridCode IN ('" + delGridCodes.Replace(",", "','") + @"'))
+                    string delSql = @"DELETE FROM Grid_Func WHERE GridId IN (SELECT GridId FROM Grid_Main WHERE GridCode IN ('" + delGridCodes.Replace(",", "','") + @"'))
                         ;DELETE FROM Grid_Column WHERE GridId IN (SELECT GridId FROM Grid_Main WHERE GridCode IN ('" + delGridCodes.Replace(",", "','") + @"'))
                         ;DELETE FROM Grid_Main WHERE     GridCode IN ('" + delGridCodes.Replace(",", "','") + @"')";
                     _helper.ExecuteNonQuery(delSql);
@@ -1556,7 +2402,7 @@ namespace CPFrameWork.UIInterface
             #region 写入数据
             SqlCommand cmd = new SqlCommand(@"SELECT * FROM Grid_Main WHERE 1=2
                     ;SELECT * FROM Grid_Column WHERE 1=2
-                    ;SELECT * FROM Grid_Func WHERE 1=2", 
+                    ;SELECT * FROM Grid_Func WHERE 1=2",
                 _helper.GetConnection() as SqlConnection);
             SqlDataAdapter da = new System.Data.SqlClient.SqlDataAdapter(cmd);
             // SqlCommandBuilder builder = new SqlCommandBuilder(da);
@@ -1612,7 +2458,7 @@ namespace CPFrameWork.UIInterface
                 {
                     dr["GridId"] = oldNewGridId[int.Parse(dr["GridId"].ToString())];
                     string insertSql = CPAppContext.GetInsertSql("Grid_Column", dsStruct.Tables["Grid_Column"].Columns, dr);
-                   
+
                     SqlCommand cmdInsert = new SqlCommand(insertSql, _helper.GetConnection() as SqlConnection);
                     foreach (DataColumn dc in dsStruct.Tables["Grid_Column"].Columns)
                     {
@@ -1669,7 +2515,8 @@ namespace CPFrameWork.UIInterface
         public override DataSet GetConfig(List<int> gridIdCol)
         {
             string ids = "";
-            gridIdCol.ForEach(t => {
+            gridIdCol.ForEach(t =>
+            {
                 if (string.IsNullOrEmpty(ids))
                     ids = t.ToString();
                 else
@@ -1687,7 +2534,7 @@ namespace CPFrameWork.UIInterface
         }
 
         #region 统计列合计值
-        public override string  StatisticsColumnSum(CPGrid gridObj,CPGridColumn curColumn, string otherCondition)
+        public override string StatisticsColumnSum(CPGrid gridObj, CPGridColumn curColumn, string otherCondition)
         {
             if (CPAppContext.CurDbType() == DbHelper.DbTypeEnum.SqlServer)
             {
@@ -1723,7 +2570,7 @@ namespace CPFrameWork.UIInterface
                             strSql += " WHERE " + otherCondition;
                         }
                     }
-                } 
+                }
                 try
                 {
                     #region 调用二次开发方法 
@@ -1804,7 +2651,7 @@ namespace CPFrameWork.UIInterface
                 }
                 else
                 {
-                    if (gridObj.DataSourceType ==  CPGridEnum.DataSourceTypeEnum.Sql)
+                    if (gridObj.DataSourceType == CPGridEnum.DataSourceTypeEnum.Sql)
                     {
                         if (string.IsNullOrEmpty(otherCondition) == false)
                         {
@@ -1833,7 +2680,7 @@ namespace CPFrameWork.UIInterface
                                 strSql += " ORDER BY " + orderBy;
                             }
                         }
-                       
+
                     }
                     else
                     {
@@ -1873,10 +2720,10 @@ namespace CPFrameWork.UIInterface
                     }
                     #endregion
                     SqlParameter[] para = new System.Data.SqlClient.SqlParameter[3];
-                    para[0] = new SqlParameter("@sqlstr",strSql);
-                    para[1] = new SqlParameter("@currentpage", currentPage );
+                    para[0] = new SqlParameter("@sqlstr", strSql);
+                    para[1] = new SqlParameter("@currentpage", currentPage);
                     para[2] = new SqlParameter("@pagesize", pageSize);
-                    DataSet ds = _helper.ExecuteDataSet("CP_ReadDataPager",CommandType.StoredProcedure, para );
+                    DataSet ds = _helper.ExecuteDataSet("CP_ReadDataPager", CommandType.StoredProcedure, para);
                     recordSize = Convert.ToInt32(ds.Tables[1].Rows[0][0].ToString());
                     _helper = null;
                     DataTable dtReturn = ds.Tables[2];
@@ -1914,7 +2761,146 @@ namespace CPFrameWork.UIInterface
                     throw new Exception("读取列表实际数据时出错，执行Sql语句如下：" + strSql + "；详细信息如下：" + ex.Message.ToString());
                 }
             }
-            else if(CPAppContext.CurDbType() == DbHelper.DbTypeEnum.Oracle)
+            else if (CPAppContext.CurDbType() == DbHelper.DbTypeEnum.MySql)
+            {
+                {
+                    DbHelper _helper = new DbHelper(gridObj.DbIns, DbHelper.DbTypeEnum.MySql);
+                    string strSql = gridObj.DataSource;
+                    strSql = CPExpressionHelper.Instance.RunCompile(strSql);
+                    if (strSql.IndexOf("{@Condition@}", StringComparison.InvariantCultureIgnoreCase) != -1)
+                    {
+                        if (string.IsNullOrEmpty(otherCondition) == false)
+                        {
+                            strSql = strSql.Replace("{@Condition@}", otherCondition);
+                        }
+                        else
+                            strSql = strSql.Replace("{@Condition@}", "1=1");
+                    }
+                    else if (strSql.IndexOf("{@ConditionEx@}", StringComparison.InvariantCultureIgnoreCase) != -1)
+                    {
+                        //注意，此关键字会把'换成''，以便于给存储过程传值
+                        if (string.IsNullOrEmpty(otherCondition) == false)
+                        {
+                            strSql = strSql.Replace("{@ConditionEx@}", otherCondition.Replace("'", "''"));
+                        }
+                        else
+                            strSql = strSql.Replace("{@ConditionEx@}", "1=1");
+                    }
+                    else
+                    {
+                        if (gridObj.DataSourceType == CPGridEnum.DataSourceTypeEnum.Sql)
+                        {
+                            if (string.IsNullOrEmpty(otherCondition) == false)
+                            {
+                                strSql = "SELECT * FROM (" + strSql + " ) as CPGridTableTable";
+                                strSql += " WHERE " + otherCondition;
+                            }
+                        }
+                    }
+                    if (gridObj.DataSourceType == CPGridEnum.DataSourceTypeEnum.Sql)
+                    {
+                        if (gridObj.IsGroup.Value)
+                        {
+                            if (string.IsNullOrEmpty(gridObj.GroupField) == false)
+                            {
+                                strSql += " ORDER BY " + gridObj.GroupField + " " + gridObj.GroupSort.ToString();
+                                if (string.IsNullOrEmpty(orderBy) == false)
+                                {
+                                    strSql += " , " + orderBy;
+                                }
+                            }
+
+                            else
+                            {
+                                if (string.IsNullOrEmpty(orderBy) == false)
+                                {
+                                    strSql += " ORDER BY " + orderBy;
+                                }
+                            }
+
+                        }
+                        else
+                        {
+                            if (string.IsNullOrEmpty(orderBy) == false)
+                            {
+                                strSql += " ORDER BY " + orderBy;
+                            }
+                        }
+                    }
+                    try
+                    {
+                        #region 调用二次开发方法 
+                        if (string.IsNullOrEmpty(gridObj.BeforeGridLoad) == false)
+                        {
+
+                            string[] sArray = gridObj.BeforeGridLoad.Split(';');
+                            for (int i = 0; i < sArray.Length; i++)
+                            {
+                                try
+                                {
+                                    if (string.IsNullOrEmpty(sArray[i]))
+                                        continue;
+                                    CPBeforeReadDataFromDbEventArgs e = new CPBeforeReadDataFromDbEventArgs(gridObj, strSql);
+                                    CPGridInterface inter = Activator.CreateInstance(Type.GetType(sArray[i])) as CPGridInterface;
+                                    bool b = inter.BeforeReadDataFromDb(e);
+                                    if (b)
+                                    {
+                                        strSql = e.StrSql;
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    throw new Exception("调用二次开发方法【" + sArray[i] + "】时出错，错误信息如下 ：" + ex.Message);
+                                }
+                            }
+
+                        }
+                        #endregion
+                        MySqlParameter[] para = new MySqlParameter[3];
+                        para[0] = new MySqlParameter("@sqlstr", strSql);
+                        para[1] = new MySqlParameter("@currentpage", currentPage);
+                        para[2] = new MySqlParameter("@pagesize", pageSize);
+                        DataSet ds = _helper.ExecuteDataSet("CP_ReadDataPager", CommandType.StoredProcedure, para);
+                        //对于mysql ，如果最后一个无数据，则不会返回第三张表，故把第二张和第三张交换。
+                        recordSize = Convert.ToInt32(ds.Tables[2].Rows[0][0].ToString());
+                        _helper = null;
+                        DataTable dtReturn = ds.Tables[1];
+                        #region 调用二次开发方法
+                        if (string.IsNullOrEmpty(gridObj.BeforeGridLoad) == false)
+                        {
+
+                            string[] sArray = gridObj.BeforeGridLoad.Split(';');
+                            for (int i = 0; i < sArray.Length; i++)
+                            {
+                                try
+                                {
+                                    if (string.IsNullOrEmpty(sArray[i]))
+                                        continue;
+                                    CPAfterReadDataFromDbEventArgs e = new CPAfterReadDataFromDbEventArgs(gridObj, dtReturn);
+                                    CPGridInterface inter = Activator.CreateInstance(Type.GetType(sArray[i])) as CPGridInterface;
+                                    bool b = inter.AfterReadDataFromDb(e);
+                                    if (b)
+                                    {
+                                        dtReturn = e.RealData;
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    throw new Exception("调用二次开发方法【" + sArray[i] + "】时出错，错误信息如下 ：" + ex.Message);
+                                }
+                            }
+
+                        }
+                        #endregion
+                        return dtReturn;
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new Exception("读取列表实际数据时出错，执行Sql语句如下：" + strSql + "；详细信息如下：" + ex.Message.ToString());
+                    }
+                }
+            }
+            else if (CPAppContext.CurDbType() == DbHelper.DbTypeEnum.Oracle)
             {
                 throw new Exception("未实现");
             }
@@ -1941,7 +2927,7 @@ namespace CPFrameWork.UIInterface
 
 
     #region 标签 部分
-     public abstract  class BaseCPTabRep : BaseRepository<CPTab>
+    public abstract class BaseCPTabRep : BaseRepository<CPTab>
     {
         public BaseCPTabRep(ICPCommonDbContext dbContext) : base(dbContext)
         {
@@ -2067,7 +3053,8 @@ namespace CPFrameWork.UIInterface
         public override DataSet GetConfig(List<int> tabIdCol)
         {
             string ids = "";
-            tabIdCol.ForEach(t => {
+            tabIdCol.ForEach(t =>
+            {
                 if (string.IsNullOrEmpty(ids))
                     ids = t.ToString();
                 else
@@ -2075,7 +3062,7 @@ namespace CPFrameWork.UIInterface
             });
             DbHelper _helper = new DbHelper("CPCommonIns", CPAppContext.CurDbType());
             string strSql = "SELECT * FROM Tab_Main WHERE TabId in(" + ids + ");";
-            strSql += "SELECT * FROM Tab_Element WHERE TabId in(" + ids + ")"; 
+            strSql += "SELECT * FROM Tab_Element WHERE TabId in(" + ids + ")";
             DataSet ds = _helper.ExecuteDataSet(strSql);
             ds.Tables[0].TableName = "Tab_Main";
             ds.Tables[1].TableName = "Tab_Element";
@@ -2216,7 +3203,8 @@ namespace CPFrameWork.UIInterface
                     oldNewSourceIdAndParentId.Add(int.Parse(dr["SourceId"].ToString()), (newId.ToString() + "$" + dr["ParentSourceId"].ToString()));
                 }
                 string updateSql = "";
-                oldNewSourceIdAndParentId.Keys.ToList().ForEach(t => {
+                oldNewSourceIdAndParentId.Keys.ToList().ForEach(t =>
+                {
                     string[] sArray = oldNewSourceIdAndParentId[t].ToString().Split('$');
                     if (int.Parse(sArray[1]).Equals(-1) == false)
                     {
@@ -2230,7 +3218,7 @@ namespace CPFrameWork.UIInterface
                         }
                     }
                 });
-                if(string.IsNullOrEmpty(updateSql)==false)
+                if (string.IsNullOrEmpty(updateSql) == false)
                 {
                     _helper.ExecuteNonQuery(updateSql);
                 }
@@ -2271,7 +3259,8 @@ namespace CPFrameWork.UIInterface
         public override DataSet GetConfig(List<int> treeIdCol)
         {
             string ids = "";
-            treeIdCol.ForEach(t => {
+            treeIdCol.ForEach(t =>
+            {
                 if (string.IsNullOrEmpty(ids))
                     ids = t.ToString();
                 else
@@ -2370,7 +3359,7 @@ namespace CPFrameWork.UIInterface
             dsStruct.Tables[4].TableName = "DataV_Layout";
 
             #region DataV_Main
-            Dictionary<int, int> oldNewDataVId= new Dictionary<int, int>();
+            Dictionary<int, int> oldNewDataVId = new Dictionary<int, int>();
             foreach (DataRow dr in ds.Tables["DataV_Main"].Rows)
             {
                 dr["SysId"] = targetSysId;
@@ -2434,10 +3423,11 @@ namespace CPFrameWork.UIInterface
                     }
                     int newId = int.Parse(_helper.ExecuteScalar(cmdInsert).ToString());
                     oldNewStatisticsId.Add(int.Parse(dr["StatisticsId"].ToString()), newId);
-                    oldNewSourceIdAndParentId.Add(newId,  dr["ParentStatisticsId"].ToString( ));
+                    oldNewSourceIdAndParentId.Add(newId, dr["ParentStatisticsId"].ToString());
                 }
                 string updateSql = "";
-                oldNewSourceIdAndParentId.Keys.ToList().ForEach(t => {
+                oldNewSourceIdAndParentId.Keys.ToList().ForEach(t =>
+                {
                     string oldParent = oldNewSourceIdAndParentId[t].ToString();
                     if (int.Parse(oldParent).Equals(-1) == false)
                     {
@@ -2523,9 +3513,10 @@ namespace CPFrameWork.UIInterface
                 {
                     dr["DataVId"] = oldNewDataVId[int.Parse(dr["DataVId"].ToString())];
                     string layoutHTML = Convert.IsDBNull(dr["LayoutHTML"]) ? "" : dr["LayoutHTML"].ToString();
-                    if(string.IsNullOrEmpty(layoutHTML)==false)
+                    if (string.IsNullOrEmpty(layoutHTML) == false)
                     {
-                        oldNewStatisticsId.Keys.ToList().ForEach(t => {
+                        oldNewStatisticsId.Keys.ToList().ForEach(t =>
+                        {
                             layoutHTML = layoutHTML.Replace("divStatistics_" + t, "divStatistics_" + oldNewStatisticsId[t]);
                         });
                         dr["LayoutHTML"] = layoutHTML;
@@ -2558,7 +3549,8 @@ namespace CPFrameWork.UIInterface
         public override DataSet GetConfig(List<int> dataVIdCol)
         {
             string ids = "";
-            dataVIdCol.ForEach(t => {
+            dataVIdCol.ForEach(t =>
+            {
                 if (string.IsNullOrEmpty(ids))
                     ids = t.ToString();
                 else
